@@ -1,6 +1,7 @@
 import urllib
 import json as JSON
 
+import requests
 from requests import Session
 from exceptions import ServerError
 
@@ -30,33 +31,38 @@ def handle_errors(response: dict) -> bool:
 
 class Buyer_waildberries:
     default_headers = {
-        'Host': 'wbxcatalog-ru.wildberries.ru',
         'Connection': 'keep-alive',
-        'sec-ch-ua': '" Not A;Brand";v="99", "Chromium";v="98", "Google Chrome";v="98"',
-        'sec-ch-ua-mobile': '?0',
+        "content-type": "application/json",
+        "x-spa-version": "9.1.2.1",
+        "x-requested-with": "XMLHttpRequest",
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.102 Safari/537.36',
         'sec-ch-ua-platform': '"Windows"',
         'Accept': '*/*',
         'Origin': 'https://www.wildberries.ru',
-        'Sec-Fetch-Site': 'same-site',
-        'Sec-Fetch-Mode': 'cors',
-        'Sec-Fetch-Dest': 'empty',
-        'Referer': 'https://www.wildberries.ru/catalog/60181354/detail.aspx?targetUrl=MI',
         'Accept-Encoding': 'gzip, deflate, br',
         'Accept-Language': 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7'}
 
-    def __init__(self,cookies=None,):
+    def __init__(self, cookies=None, ):
         if cookies:
             self.cookies = {
-                "WILDAUTHNEW_V3": cookies
+                "name": "WILDAUTHNEW_V3",
+                "value": cookies
             }
         else:
             self.cookies = {
-                "WILDAUTHNEW_V3": "8DCF18261BA034889B058109D6C0C8AFB83C9C53F64D32F5A73274EAE1AF1757FB1C66D0FE8B3E10D834B0C1883DB996A024800F7A6EB5FF78542C0CBBBA5DEC94756AEA617928959E338B54C8E93F20D222C22D17DFA2A5F4CBA5F085BC93CCF6D587A0FE8573DB086EE252E9F1F8698B2924AB471DB8964380615213B5EEED0DAE8F54548FB2DA0BFDB69B9530E8DC93B06B2ABFAE54A152E89DFD04E9A77D9AA19E5F4965A7205859CACD840AC3CBB53B75135BF2FAD976B84FB1C24120040A5061730FD596A788125963508C6F6766CF73F237E6C95FE74E0ABD1FCFE4DCD13179E1D1AC5AB83EF09ED1464518E68A508F3B9ABD6C2B022A2D791F374A9A16CCE230D1244CD28C9773480C7BAC93FB50A7E5B0DC0E7FB92E569C574AE77C8BE21A8E"
+                "name": "WILDAUTHNEW_V3",
+                "value": "AD53FF7135AAC8445977A732C61A1F12BB3C00336343C03956D66570FF0135245D5343865CC0B3427DBF09B357076BC915E7BCAF050C23050D70F85D2B42CE01AD74C12E3DF1BBE625CCA88539A9768D944E40F31A076DA1FDC3AFB2FB52AA6C4F3569141DDFB53BF273C0E58D555F2FD2AF2581FAA8239F2F6B96122222A535005ECB5FC96C65F689B223C2DEC178C24009826DCF2A5C21F9B94F429DC25BC0ACBD65470B2AFB0072CEB8D85952A2237F5E78198042C59BAECD81E59723013E618776A201A228B95397B85FA9167FA1F623D6D47A1E6AA59809FB1756645C3F0ABCDF3C064299A46AD92738813ACFBAC4E3AC72A9563363800A11F3621EEEA35B40EC52EDFAF2EA6668827D96A01BAE35B2AB3C3A075BA7679989BFFFA88F6A3FFC767C"
             }
+        self.proxy = {
+            "https": "http://localhost:8888",
+            "http": "http://localhost:8888"
+        }
 
         self.session = Session()
         self.headers = self.default_headers
+        self.session.cookies.set(self.cookies["name"], self.cookies["value"])
+        self.session.headers.update(self.headers)
+        # self.session.proxies.update(self.proxy)
 
     def get_confirm_code(self, number: int) -> bool:
         """
@@ -122,6 +128,7 @@ class Buyer_waildberries:
                        method: str,
                        url: str,
                        json: dict = None,
+                       data: str = None,
                        **kwargs) -> dict:
         """Запрос к серверу
 
@@ -140,6 +147,10 @@ class Buyer_waildberries:
         Returns:
             dict: Возвращает ответ от сервера
         """
+        if data:
+            self.session.headers['content-type'] = 'application/x-www-form-urlencoded; charset=UTF-8'
+        elif json:
+            self.session.headers['content-type'] = "application/json"
         params = '&'.join([
             str(x) + "=" + urllib.parse.quote_plus(str(y))
             for x, y in kwargs.items()
@@ -151,35 +162,68 @@ class Buyer_waildberries:
             method=method,
             url=url,
             json=json,
-            headers=self.headers,
-            cookies=self.cookies,
+            data=data
         )
-        if isinstance(response, object):
+        if response.status_code == 200:
             response_dict = JSON.loads(response.text)
             handle_errors(response_dict)
             return response_dict
         else:
-            raise ConnectionError
+            return response
 
-    def buy_moment(self, id_obj: int, ):
+    def add_to_basket(self):
+        pass
+
+    def info_about_cards(self, id_obj: int, ):
+        """
+        url - buy_now
+        :param id_obj: - id товара, которы мы хотим купить(положить в корзину)
+        :return:
+        """
+
         data = self.stock_availability(self.nm_2_cards(id_obj))
         url = "https://www.wildberries.ru/lk/basket/buyitnow/data"
+
         resp = self.handle_request(
             method="POST",
             url=url,
-            json=None,
             includeInOrderStr=data["optionId"]
         )
-        open_cards = []
+        open_cards = {}
         for el in resp["value"]["data"]["basket"]["paymentTypes"][0]["bankCards"]:
             if not el["createNew"]:
-                open_cards.append({
-                    "name": el["name"],
-                    "system": el["system"]
-                })
-        return open_cards
+                open_cards[el["name"]] = {
+                    "id": el["id"],
+                    "system": el["system"],
+                    "select": False
+                }
+        try:
+            open_cards[resp["value"]["data"]["basket"]["paymentType"]["selectedBankCard"]["name"]]["select"] = True
+        except KeyError:
+            print("Выбран способ платы не картой!")
+        return open_cards, data
 
-
+    def choosing_a_bank_card(self, name_bank_card: str, open_cards: dict, data: dict) -> bool:
+        """
+        Выбор карты для оплаты товара.
+        :param name_bank_card: - номер карты с которой оплачиваем
+        :param open_cards: - информация о доступных картах (info_about_cards)
+        :param data: - информация о товаре (получаем из info_about_cards, формируется в stock_availability)
+        :return:
+        """
+        url = "https://www.wildberries.ru/lk/basket/spa/refresh"
+        self.session.headers['content-type'] = 'application/x-www-form-urlencoded; charset=UTF-8'
+        data = f"paymentTypeId=63&prevPaymentTypeId=63&includeInOrder%5B0%5D={data['optionId']}&deliveryWay=self&noneIncludedInOrder=false&bankCardId=35a15a2e-3cd4-11ec-bfef-96737a2a6dae&addressId=111104&isBuyItNowMode=true&unloadCargoOption="
+        response = self.handle_request(
+            method="POST",
+            url=url,
+            data=data,
+        )
+        if name_bank_card is response["value"]["basket"]["paymentType"]["selectedBankCard"]["name"]:
+            print(f"Выбранная карта: {name_bank_card}")
+            return True
+        print(f'Выбранная карта: {response["value"]["data"]["basket"]["paymentType"]["selectedBankCard"]["name"]}')
+        return False
 
     def stock_availability(self, resp: dict) -> dict:
         """
@@ -193,34 +237,25 @@ class Buyer_waildberries:
         if not resp:
             raise ValueError
         else:
+            try:
+                answ = {
+                    "name": resp["data"]["products"][0]["name"],
+                    "id_obj": resp["data"]["products"][0]['id'],
+                    "quantity": 0,
+                    "prise": min(resp["data"]["products"][0]['priceU'],
+                                 resp["data"]["products"][0]['salePriceU']) // 100,
+                    "optionId": resp["data"]["products"][0]['sizes'][0]["optionId"]
+                }
+            except Exception as ex:
+                print(f"Ошибка! \n{ex}")
             if resp["data"]["products"][0]['sizes'][0]["stocks"]:
-                if "salePriceU" in resp["data"]["products"][0]:
-                    answ = {
-                        "id_obj": resp["data"]["products"][0]['id'],
-                        "quantity": resp["data"]["products"][0]['sizes'][0]["stocks"][0]["qty"],
-                        "prise": min(resp["data"]["products"][0]['priceU'],
-                                     resp["data"]["products"][0]['salePriceU']) // 100,
-                        "optionId": resp["data"]["products"][0]['sizes'][0]["optionId"]
-                    }
-                else:
-                    answ = {
-                        "id_obj": resp["data"]["products"][0]['id'],
-                        "quantity": resp["data"]["products"][0]['sizes'][0]["stocks"][0]["qty"],
-                        "prise": resp["data"]["products"][0]['priceU'] // 100,
-                        "optionId": resp["data"]["products"][0]['sizes'][0]["optionId"]
-                    }
+                answ["quantity"] = resp["data"]["products"][0]['sizes'][0]["stocks"][0]["qty"]
+
+            if "salePriceU" in resp["data"]["products"][0]:
+                answ["prise"] = min(resp["data"]["products"][0]['priceU'],
+                                    resp["data"]["products"][0]['salePriceU']) // 100
             else:
-                if "salePriceU" in resp["data"]["products"][0]:
-                    answ = {
-                        "id_obj": resp["data"]["products"][0]['id'],
-                        "quantity": 0,
-                        "prise": min(resp["data"]["products"][0]['priceU'],
-                                     resp["data"]["products"][0]['salePriceU']) // 100
-                    }
-                else:
-                    answ = {
-                        "id_obj": resp["data"]["products"][0]['id'],
-                        "quantity": 0,
-                        "prise": resp["data"]["products"][0]['priceU'] // 100
-                    }
+                answ["prise"] = resp["data"]["products"][0]['salePriceU'] // 100
+
+            print(answ)
             return answ

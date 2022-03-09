@@ -20,11 +20,20 @@ def main():
     # print(data)
 
     # По товару
-    id_obj = 24547604
+    id_obj = 25349771
     my_test = Buyer_waildberries()
     # result = my_test.nm_2_cards(id_obj=id_obj)
-    cards = my_test.buy_moment(id_obj)
-    print(cards)
+    cards, data = my_test.info_about_cards(id_obj)
+    for key in cards.keys():
+        print(f"{key} - {cards[key]}")
+    flag = bool(int(input("Если нужно поменять карту, введите 1, иначе 0: ")))
+    if flag:
+        name_card = input("Скопируйте и вставьте номер карты: ")
+        flag = my_test.choosing_a_bank_card(name_bank_card=name_card, open_cards=cards, data=data)
+    if flag:
+        print(1)
+    else:
+        print(0)
     # availability
     # if result:
     #     print(my_test.stock_availability(result))

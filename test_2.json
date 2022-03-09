@@ -1,0 +1,342 @@
+{
+  "resultState": 0,
+  "value": {
+    "data": {
+      "basket": {
+        "needCalcDeliveryPrice": false,
+        "checkPaymentDiscount": false,
+        "paymentTypes": [
+          {
+            "isInst": false,
+            "isCredit": false,
+            "isSberPay": false,
+            "bankCards": [
+              {
+                "isBlocked": false,
+                "isSberPay": false,
+                "id": "35a15a2e-3cd4-11ec-bfef-96737a2a6dae",
+                "name": "533669******4699",
+                "createNew": false,
+                "system": "mastercard",
+                "expireDt": "03/23"
+              },
+              {
+                "isBlocked": false,
+                "isSberPay": false,
+                "default": true,
+                "id": "e4ecdaea-9df2-11ec-908c-da3c4cd87a12",
+                "name": "553691******7412",
+                "createNew": false,
+                "system": "mastercard",
+                "expireDt": "06/29"
+              },
+              {
+                "isBlocked": false,
+                "isSberPay": false,
+                "id": "_newcardid",
+                "name": "Привязать новую карту",
+                "createNew": true,
+                "system": ""
+              },
+              {
+                "isSberPay": false,
+                "id": "_newcardid",
+                "name": "WB Pay",
+                "createNew": true,
+                "system": "wbcard"
+              }
+            ],
+            "isOnline": true,
+            "isOnlineGroup": true,
+            "isGooglePay": false,
+            "isApplePay": false,
+            "isCreditCard": true,
+            "isHousekeepingNeeds": false,
+            "isQRC": false,
+            "codeLower": "crd",
+            "name": "Картой",
+            "id": "63",
+            "available": true
+          },
+          {
+            "isInst": false,
+            "isCredit": false,
+            "isSberPay": false,
+            "isOnline": true,
+            "isOnlineGroup": true,
+            "isGooglePay": false,
+            "isApplePay": true,
+            "isCreditCard": false,
+            "isHousekeepingNeeds": false,
+            "isQRC": false,
+            "codeLower": "app",
+            "name": "Apple Pay",
+            "id": "53",
+            "available": true
+          },
+          {
+            "hidePt": true,
+            "isBalance": true,
+            "isInst": false,
+            "isCredit": false,
+            "isSberPay": false,
+            "isOnline": false,
+            "isOnlineGroup": false,
+            "isGooglePay": false,
+            "isApplePay": false,
+            "isCreditCard": false,
+            "isHousekeepingNeeds": false,
+            "isQRC": false,
+            "codeLower": "bal",
+            "name": "Оплата балансом",
+            "id": "99",
+            "available": true
+          },
+          {
+            "isInst": false,
+            "isCredit": true,
+            "isSberPay": false,
+            "isOnline": true,
+            "isOnlineGroup": true,
+            "isGooglePay": false,
+            "isApplePay": false,
+            "isCreditCard": false,
+            "isHousekeepingNeeds": false,
+            "isQRC": false,
+            "codeLower": "cre",
+            "name": "Кредит",
+            "id": "83",
+            "available": false,
+            "errorTip": "Данный тип оплаты предоставляется при покупке на сумму более 5 000 ₽"
+          },
+          {
+            "isInst": false,
+            "isCredit": false,
+            "isSberPay": true,
+            "isOnline": true,
+            "isOnlineGroup": true,
+            "isGooglePay": false,
+            "isApplePay": false,
+            "isCreditCard": false,
+            "isHousekeepingNeeds": false,
+            "isQRC": false,
+            "codeLower": "sbp",
+            "name": "SberPay",
+            "id": "85",
+            "available": true
+          }
+        ],
+        "deliveryWays": [
+          {
+            "id": 2,
+            "code": "self",
+            "name": "Пункт выдачи",
+            "calendars": [
+              {
+                "storeIds": [
+                  507
+                ],
+                "qnt": 1,
+                "sum": 50,
+                "nms": [
+                  25349771
+                ],
+                "shippingInterval": {
+                  "withinDaysToDelivery": 1,
+                  "deliveryDate": "10 марта",
+                  "deliveryDateShort": "3/10/2022",
+                  "intervalId": 1,
+                  "estimatedDeliveryDateText": "10-12 марта"
+                },
+                "timeDeliveryIntervals": {
+                  "3/10/2022": [
+                    {
+                      "key": 1,
+                      "value": "00:00 - 00:00"
+                    }
+                  ]
+                },
+                "withinDaysToDelivery": 1,
+                "estimatedDeliveryDateText": "10-12 марта",
+                "isCargo": false,
+                "deliveryPrice": 0,
+                "sellerDelivery": false
+              }
+            ],
+            "selectedAddressId": "111104",
+            "showFloorLift": false
+          },
+          {
+            "id": 1,
+            "code": "courier",
+            "name": "Курьером",
+            "calendars": [],
+            "showFloorLift": false
+          }
+        ],
+        "deliveryWay": "self",
+        "deliveryIntervalTxt": "10-12 марта",
+        "simpleDeliveryDates": [
+          "10-12 марта"
+        ],
+        "deliveryPoint": {
+          "sberPostamat": false,
+          "partnerPost": false,
+          "isFranchise": false,
+          "deliveryName": "Пункт выдачи",
+          "pointTypeName": "Пункт выдачи",
+          "fittingPrice": 0,
+          "addressId": "111104",
+          "address": "Москва Юрловский проезд 13",
+          "lat": "55.867909",
+          "lon": "37.622708",
+          "deliveryType": "self",
+          "isExternalPostamat": false,
+          "kladrId": 111104,
+          "workTime": "Ежедневно 10:00-21:00",
+          "deliveryIsUnavailable": false,
+          "status": 0,
+          "rate": 4.96
+        },
+        "paymentType": {
+          "selectedBankCard": {
+            "isBlocked": false,
+            "isSberPay": false,
+            "default": true,
+            "id": "e4ecdaea-9df2-11ec-908c-da3c4cd87a12",
+            "name": "553691******7412",
+            "createNew": false,
+            "system": "mastercard",
+            "expireDt": "06/29"
+          },
+          "userBankCardsCount": 2,
+          "groupName": "Онлайн",
+          "dontRemember": false,
+          "bankCardId": "e4ecdaea-9df2-11ec-908c-da3c4cd87a12",
+          "isInst": false,
+          "isCredit": false,
+          "isSberPay": false,
+          "isOnline": true,
+          "isOnlineGroup": true,
+          "isGooglePay": false,
+          "isApplePay": false,
+          "isCreditCard": true,
+          "isHousekeepingNeeds": false,
+          "isQRC": false,
+          "codeLower": "crd",
+          "name": "Картой",
+          "id": "63",
+          "available": true
+        },
+        "totalPrice": 500,
+        "totalPriceWithSale": 50,
+        "totalPriceWithCoupon": 50,
+        "totalPriceWithCouponAndPersDisc": 50,
+        "totalPriceWithCouponPersDiscAndDeliveryPrice": 50,
+        "totalAcquirerFee": 0,
+        "totalPossibleAcquirerFee": 0,
+        "totalPriceToPay": 50,
+        "totalDiscount": 450,
+        "totalQuantity": 1,
+        "totalAvailableItemsCount": 1,
+        "includeInOrder": [
+          59221248
+        ],
+        "basketItemsByDeliveryDate": [
+          {
+            "soldOut": false,
+            "deliveryDate": 1,
+            "_storeIds": [
+              507
+            ],
+            "storeIds": "507",
+            "items": [
+              {
+                "needCalcDeliveryPrice": false,
+                "possibleAcquirerFee": 0,
+                "acquirerFee": 0,
+                "isImportItem": false,
+                "priceCredit": 5,
+                "creditOptions": 1,
+                "isDeleted": false,
+                "isLargeItem": false,
+                "isExpressFood": false,
+                "isPreorder": false,
+                "isSellerDelivery": false,
+                "couponSale": 0,
+                "id": 59221248,
+                "canBeOrdered": true,
+                "cod1S": 25349771,
+                "characteristicId": 59221248,
+                "goodsName": "Чехол для телефона накладка",
+                "colorName": "белый",
+                "colorsetName": "",
+                "sizeName": "0",
+                "brandName": "KLRD",
+                "partQuantity": 0,
+                "quantity": 1,
+                "maxQuantity": 25,
+                "minQuantity": 1,
+                "sale": 90,
+                "personalDiscount": 0,
+                "paymentSale": 0,
+                "storeName": "Коледино WB",
+                "storeId": 507,
+                "impossibleDeliveryMsg": "",
+                "price": 500,
+                "priceWithSale": 50,
+                "priceWithCoupon": 50,
+                "priceWithCouponAndSpp": 50,
+                "priceWithCouponAndDiscount": 50,
+                "priceSum": 500,
+                "priceSumWithCouponAndDiscount": 50,
+                "couponDescShort": "",
+                "includeInOrder": true,
+                "onStock": 1,
+                "targetUrl": "XS|6|SNT|IT|PU|силиконовый чехол|_t0=3012;3000&_t1=1|merger",
+                "targetCode": 0,
+                "subjectId": 390,
+                "subjectParentId": 6258
+              }
+            ],
+            "qnt": 1,
+            "sum": 50,
+            "includeInOrder": true
+          }
+        ],
+        "noneIncludedInOrder": false,
+        "hasEnoughGoodsQuantity": true,
+        "hasSomeLargeGoods": false,
+        "hasSomeCourierGoods": false,
+        "hasIdentityRequiredGoods": false,
+        "hasImportGoods": false,
+        "settings": {
+          "enableQRCQuickPay": false,
+          "forceBasketNewCardBind": true,
+          "onlinePaymentDiscount": false
+        },
+        "applePayInfo": {
+          "merchantId": "merchant.com.wildberries.new",
+          "currency": "RUB"
+        }
+      },
+      "modelErrors": "",
+      "isBuyItNowMode": true,
+      "retargetingModel": "{\n  \"pageType\": 4,\n  \"basketProducts\": [\n    {\n      \"id\": 25349771,\n      \"name\": \"Чехол для телефона накладка\",\n      \"price\": \"50 RUR\",\n      \"quantity\": 1\n    }\n  ]\n}",
+      "googleTagModel": "{\n  \"PageType\": \"cart\",\n  \"Ptype\": [\n    \"Чехол для телефона накладка\"\n  ],\n  \"ProdID\": [\n    25349771\n  ],\n  \"Value\": [\n    \"50\"\n  ],\n  \"Delivery\": \"Бесплатная доставка\",\n  \"Bvalue\": 50.0,\n  \"Bquantity\": 1\n}",
+      "deliveryPointsModuleData": {
+        "deliveryPointsUrl": "/spa/deliverypoints",
+        "showPooUrl": "/spa/poos/show",
+        "courierTemplate": "spaedityandexuseraddress",
+        "pooTemplate": "spaeditpoo",
+        "editCourierAddressUrl": "/spa/yandexaddress/editajax?version=2",
+        "editPooUrl": "/spa/poos/create",
+        "removeUrl": "/spa/removeaddress"
+      },
+      "showRecommendationsPopup": true
+    },
+    "counterEventsModel": {
+      "info": "{\"counterData\":[{\"counterType\":1,\"eventNames\":[\"viewBasket\",\"setEmail\"]}],\"basketItems\":[{\"id\":25349771,\"price\":50,\"quantity\":1}]}"
+    }
+  }
+}
