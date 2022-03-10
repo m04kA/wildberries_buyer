@@ -5,12 +5,6 @@ import requests
 from requests import Session
 from exceptions import ServerError
 
-# По товару
-
-
-id_obj = 16023989
-url_obj = f"https://wbxcatalog-ru.wildberries.ru/nm-2-card/catalog?&&stores=117673,122258,122259,125238,125239,125240,6159,507,3158,117501,120602,120762,6158,121709,124731,159402,2737,130744,117986,1733,686,132043&pricemarginCoeff=1.0&reg=1&appType=1&offlineBonus=0&onlineBonus=0&emp=0&locale=ru&lang=ru&curr=rub&couponsGeo=12,3,18,15,21&dest=-1029256,-102269,-1252558,-445282&nm={id_obj}"
-
 
 def handle_errors(response: dict) -> bool:
     """Обработка ошибок
@@ -30,11 +24,16 @@ def handle_errors(response: dict) -> bool:
 
 
 class Buyer_waildberries:
+    """
+    Для работы с классом необходимо проверять cookies пользователя!
+    """
+
     default_headers = {
         'Connection': 'keep-alive',
         "content-type": "application/json",
-        "x-spa-version": "9.1.2.1",
+        "x-spa-version": "9.1.2.2",
         "x-requested-with": "XMLHttpRequest",
+        "sec-ch-ua": '" Not A;Brand";v="99", "Chromium";v="99", "Google Chrome";v="99"',
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.102 Safari/537.36',
         'sec-ch-ua-platform': '"Windows"',
         'Accept': '*/*',
@@ -51,7 +50,7 @@ class Buyer_waildberries:
         else:
             self.cookies = {
                 "name": "WILDAUTHNEW_V3",
-                "value": "AD53FF7135AAC8445977A732C61A1F12BB3C00336343C03956D66570FF0135245D5343865CC0B3427DBF09B357076BC915E7BCAF050C23050D70F85D2B42CE01AD74C12E3DF1BBE625CCA88539A9768D944E40F31A076DA1FDC3AFB2FB52AA6C4F3569141DDFB53BF273C0E58D555F2FD2AF2581FAA8239F2F6B96122222A535005ECB5FC96C65F689B223C2DEC178C24009826DCF2A5C21F9B94F429DC25BC0ACBD65470B2AFB0072CEB8D85952A2237F5E78198042C59BAECD81E59723013E618776A201A228B95397B85FA9167FA1F623D6D47A1E6AA59809FB1756645C3F0ABCDF3C064299A46AD92738813ACFBAC4E3AC72A9563363800A11F3621EEEA35B40EC52EDFAF2EA6668827D96A01BAE35B2AB3C3A075BA7679989BFFFA88F6A3FFC767C"
+                "value": "79D0FB26A56005AD0CE889397F5E6B964563FE3FE861C9DD9D9AC237EDA1D2D69071D25D7597CAC4D76C95E22B7CFE229C4079FF675C4355324E5DC1CDBEC2A537D0639D0C3B04420EA049728A6A258838122C1D8CB0861B6B13E4F203E8D9C7EA289A3AD43C44AC9258919F5DD5705488F89FD04BEFCC7976D24862FBA1FA985EB88199EBDF2EB22F1E2D6F653AFCE1C9DE637D1FAA3E9E5B3E0B8CD544088A579CE50C02BA63E976BB0DF0A71DC1AE6860317738407D2F7D99987D92071E51F2F26F681C3F8A2AFA6B426D63DCE6CA0F8605CF1429DED8E8C756644E08F41A106C2B1BB468376C071BC35D889932559A8DEBECFD6CF57B36BB04C719D10F9F754E37594433409B51AB1B5613AE0B498730E5B30A53188F651BDF6F390A76E99403B356"
             }
         self.proxy = {
             "https": "http://localhost:8888",
@@ -151,10 +150,7 @@ class Buyer_waildberries:
             self.session.headers['content-type'] = 'application/x-www-form-urlencoded; charset=UTF-8'
         elif json:
             self.session.headers['content-type'] = "application/json"
-        params = '&'.join([
-            str(x) + "=" + urllib.parse.quote_plus(str(y))
-            for x, y in kwargs.items()
-        ])
+        params = urllib.parse.urlencode(kwargs)
         if params:
             url += f"?{params}"
 
@@ -169,7 +165,7 @@ class Buyer_waildberries:
             handle_errors(response_dict)
             return response_dict
         else:
-            return response
+            raise ConnectionError
 
     def add_to_basket(self):
         pass
@@ -189,6 +185,11 @@ class Buyer_waildberries:
             url=url,
             includeInOrderStr=data["optionId"]
         )
+        for el in resp["value"]["data"]["basket"]["deliveryWays"]:
+            if "selectedAddressId" in el:
+                if el["selectedAddressId"]:
+                    data["AddressInfo"]["DeliveryWayCode"] = el["code"]
+                    data["AddressInfo"]["selectedAddressId"] = el["selectedAddressId"]
         open_cards = {}
         for el in resp["value"]["data"]["basket"]["paymentTypes"][0]["bankCards"]:
             if not el["createNew"]:
@@ -211,13 +212,26 @@ class Buyer_waildberries:
         :param data: - информация о товаре (получаем из info_about_cards, формируется в stock_availability)
         :return:
         """
+
+        # POST https://www.wildberries.ru/spa/yandexaddress/editajax?version=2 # - Ссылка для определения addressId
+
         url = "https://www.wildberries.ru/lk/basket/spa/refresh"
-        self.session.headers['content-type'] = 'application/x-www-form-urlencoded; charset=UTF-8'
-        data = f"paymentTypeId=63&prevPaymentTypeId=63&includeInOrder%5B0%5D={data['optionId']}&deliveryWay=self&noneIncludedInOrder=false&bankCardId=35a15a2e-3cd4-11ec-bfef-96737a2a6dae&addressId=111104&isBuyItNowMode=true&unloadCargoOption="
+        info = {
+            "paymentTypeId": 63,
+            "prevPaymentTypeId": 63,
+            "includeInOrder[0]": data["optionId"],
+            "deliveryWay": data["AddressInfo"]["DeliveryWayCode"],
+            "noneIncludedInOrder": False,
+            "bankCardId": open_cards[name_bank_card]["id"],
+            "addressId": data["AddressInfo"]["selectedAddressId"],  # Меняется при смене пользователя
+            "isBuyItNowMode": True,
+            "unloadCargoOption": ""
+        }
+        params = urllib.parse.urlencode(info)
         response = self.handle_request(
             method="POST",
             url=url,
-            data=data,
+            data=params,
         )
         if name_bank_card is response["value"]["basket"]["paymentType"]["selectedBankCard"]["name"]:
             print(f"Выбранная карта: {name_bank_card}")
@@ -225,8 +239,16 @@ class Buyer_waildberries:
         print(f'Выбранная карта: {response["value"]["data"]["basket"]["paymentType"]["selectedBankCard"]["name"]}')
         return False
 
+    def payment_by_card(self, data):
+        url = "https://www.wildberries.ru/lk/basket/spa/submitorder"
+        response = self.handle_request(
+            method="POST",
+            url=url
+        )
+
     def stock_availability(self, resp: dict) -> dict:
         """
+        Требует данных с nm_2_cards
         Обработка полученного ответа от api wildberries.
 
         Если есть товар, то достаём от туда цену и количество на складе.
@@ -244,7 +266,8 @@ class Buyer_waildberries:
                     "quantity": 0,
                     "prise": min(resp["data"]["products"][0]['priceU'],
                                  resp["data"]["products"][0]['salePriceU']) // 100,
-                    "optionId": resp["data"]["products"][0]['sizes'][0]["optionId"]
+                    "optionId": resp["data"]["products"][0]['sizes'][0]["optionId"],
+                    "AddressInfo": {}
                 }
             except Exception as ex:
                 print(f"Ошибка! \n{ex}")
