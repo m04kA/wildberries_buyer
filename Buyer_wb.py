@@ -6,23 +6,6 @@ from requests import Session
 from exceptions import ServerError
 
 
-def handle_errors(response: dict) -> bool:
-    """Обработка ошибок
-
-    Args:
-        response (dict): Ответ от сервера
-
-    Raises:
-        ServerError: Ошибка сервера
-
-    Returns:
-        bool: Возвращает True при отсутствии ошибок
-    """
-    if 'error' in response:
-        raise ServerError(response['error'])
-    return True
-
-
 class Buyer_waildberries:
     """
     Для работы с классом необходимо проверять cookies пользователя!
@@ -73,8 +56,6 @@ class Buyer_waildberries:
         :param number:
         :return:
         """
-        # 5151 - num req
-        # phone - 79127477972
         url = "https://www.wildberries.ru/mobile/requestconfirmcode?forAction=EasyLogin"
         json = {
             "phoneInput.AgreeToReceiveSmsSpam": False,
@@ -98,9 +79,26 @@ class Buyer_waildberries:
         # 445
         url = "https://www.wildberries.ru/security/spa/signinsignup"
 
+    def handle_errors(self, response: dict) -> bool:
+        """Обработка ошибок
+
+        Args:
+            response (dict): Ответ от сервера
+
+        Raises:
+            ServerError: Ошибка сервера
+
+        Returns:
+            bool: Возвращает True при отсутствии ошибок
+        """
+        if 'error' in response:
+            raise ServerError(response['error'])
+        return True
+
     def nm_2_cards(self, id_obj: int):
         """
         Получение ответа сервера по определённому товару.
+        Информационная карточка.
         :param id_obj: - id товара.
         :return:
         """
@@ -133,8 +131,9 @@ class Buyer_waildberries:
 
         Args:
             method (str): Метод
-            path (str): Путь
+            url (str): Путь
             json (dict, optional): Данные для выполнения POST. Defaults to None.
+            data (str, optional): Данные для выполнения POST. Defaults to None. - используется при смене способа оплаты.
 
         Kwargs:
             Используются для добавления Params к ссылке
@@ -146,52 +145,66 @@ class Buyer_waildberries:
         Returns:
             dict: Возвращает ответ от сервера
         """
+        # При различном теле запроса необходим различный тип.
         if data:
             self.session.headers['content-type'] = 'application/x-www-form-urlencoded; charset=UTF-8'
         elif json:
             self.session.headers['content-type'] = "application/json"
-        params = urllib.parse.urlencode(kwargs)
+        params = urllib.parse.urlencode(kwargs)  # Формирование строки с параметрами
         if params:
-            url += f"?{params}"
+            url += f"?{params}"  # Ссылка для запроса с прараметрами
 
+        # Формирование самого запроса.
         response = self.session.request(
             method=method,
             url=url,
             json=json,
             data=data
         )
+        # Проверка на валидность ответа.
         if response.status_code == 200:
             response_dict = JSON.loads(response.text)
-            handle_errors(response_dict)
+            self.handle_errors(response_dict)
             return response_dict
         else:
             raise ConnectionError
 
     def add_to_basket(self):
+        """
+        Метод, который в дальнейшем будет использоваться для закупки определённого количества товара.
+        :return:
+        """
         pass
 
     def info_about_cards(self, id_obj: int, ):
         """
+        Метод для добавдения товара в карзину через опцию - купить сейчас (количество: 1шт.)
         url - buy_now
         :param id_obj: - id товара, которы мы хотим купить(положить в корзину)
         :return:
         """
 
-        data = self.stock_availability(self.nm_2_cards(id_obj))
+        data = self.stock_availability(self.nm_2_cards(id_obj))  # Получение данных о товаре.
         url = "https://www.wildberries.ru/lk/basket/buyitnow/data"
 
+        # Создание запроса для перевода товара в состояние перед покупкой.
         resp = self.handle_request(
             method="POST",
             url=url,
-            includeInOrderStr=data["optionId"]
+            includeInOrderStr=data["optionId"]  # Берётся из карточки товара.
         )
         for el in resp["value"]["data"]["basket"]["deliveryWays"]:
             if "selectedAddressId" in el:
+                # Получение информации о заказе, для оплаты или изменении способа оплаты.
                 if el["selectedAddressId"]:
                     data["AddressInfo"]["DeliveryWayCode"] = el["code"]
                     data["AddressInfo"]["selectedAddressId"] = el["selectedAddressId"]
+                    if el["code"] == "courier":
+                        if len(el["calendars"]) > 0:
+                            data["AddressInfo"]["DeliveryPrice"] = el["calendars"][0]["deliveryPrice"]
         open_cards = {}
         for el in resp["value"]["data"]["basket"]["paymentTypes"][0]["bankCards"]:
+            # Формирование словаря со всеми доступными картами и необходимой информацией о них.
             if not el["createNew"]:
                 open_cards[el["name"]] = {
                     "id": el["id"],
@@ -199,6 +212,7 @@ class Buyer_waildberries:
                     "select": False
                 }
         try:
+            # Определение той карты, которая выбрана для оплаты.
             open_cards[resp["value"]["data"]["basket"]["paymentType"]["selectedBankCard"]["name"]]["select"] = True
         except KeyError:
             print("Выбран способ платы не картой!")
@@ -207,6 +221,8 @@ class Buyer_waildberries:
     def choosing_a_bank_card(self, name_bank_card: str, open_cards: dict, data: dict) -> bool:
         """
         Выбор карты для оплаты товара.
+
+        Этот метод в дальнейшем можно будет переделать под универсальный способ изменения информации в заказе.
         :param name_bank_card: - номер карты с которой оплачиваем
         :param open_cards: - информация о доступных картах (info_about_cards)
         :param data: - информация о товаре (получаем из info_about_cards, формируется в stock_availability)
@@ -214,8 +230,11 @@ class Buyer_waildberries:
         """
 
         # POST https://www.wildberries.ru/spa/yandexaddress/editajax?version=2 # - Ссылка для определения addressId
-
+        # POST https://www.wildberries.ru/spa/deliverypoints - Ссылка на проверку адресов доставки
+        # POST https://www.wildberries.ru/spa/removeaddress - Ссылка на изменение адреса
         url = "https://www.wildberries.ru/lk/basket/spa/refresh"
+
+        # Формирование полного набора параметров,которые передаются в теле запроса.
         info = {
             "paymentTypeId": 63,
             "prevPaymentTypeId": 63,
@@ -223,43 +242,74 @@ class Buyer_waildberries:
             "deliveryWay": data["AddressInfo"]["DeliveryWayCode"],
             "noneIncludedInOrder": False,
             "bankCardId": open_cards[name_bank_card]["id"],
-            "addressId": data["AddressInfo"]["selectedAddressId"],  # Меняется при смене пользователя
+            "addressId": data["AddressInfo"]["selectedAddressId"],
             "isBuyItNowMode": True,
             "unloadCargoOption": ""
         }
-        params = urllib.parse.urlencode(info)
+        params = urllib.parse.urlencode(info)  # Подготовка параметров.
+
+        # Создание запроса к серверу.
         response = self.handle_request(
             method="POST",
             url=url,
             data=params,
         )
+
+        # Проверка на правильность выполнения запроса. Если карта изменилась на ту, что мы указывали - всё правильно.
         if name_bank_card is response["value"]["basket"]["paymentType"]["selectedBankCard"]["name"]:
             print(f"Выбранная карта: {name_bank_card}")
             return True
         print(f'Выбранная карта: {response["value"]["data"]["basket"]["paymentType"]["selectedBankCard"]["name"]}')
         return False
 
-    def payment_by_card(self, data):
+    def payment_by_card(self, data: dict):
+        """
+        Запрос оплаты заказа. Ещё нужно тестировать...
+        :param data:
+        :return:
+        """
+        info = {
+            "Delivery": data["AddressInfo"]["DeliveryWayCode"],
+            "orderDetails.DeliveryWay": data["AddressInfo"]["DeliveryWayCode"],
+            "orderDetails.DeliveryPointId": data["AddressInfo"]["selectedAddressId"],
+            "orderDetails.DeliveryPrice": "",  # courier -> int | self -> “”
+            "orderDetails.PaymentType.Id": 63,
+            "orderDetails.AgreePublicOffert": True,
+            "orderDetails.TotalPrice": data["prise"],
+            "orderDetails.UserBasketItems.Index": 0,
+            "orderDetails.UserBasketItems[0].CharacteristicId": data["optionId"],
+            "orderDetails.IncludeInOrder[0]": data["optionId"],
+            "orderDetails.UnloadCargoOption": ""
+        }
+        if data["AddressInfo"]["DeliveryWayCode"] == "self":
+            info["address_self"] = data["AddressInfo"]["selectedAddressId"]
+        elif data["AddressInfo"]["DeliveryWayCode"] == "courier":
+            info["address_courier"] = data["AddressInfo"]["selectedAddressId"]
+            info["DeliveryPrice"] = data["AddressInfo"]["DeliveryPrice"]
+
         url = "https://www.wildberries.ru/lk/basket/spa/submitorder"
+        params = urllib.parse.urlencode(info)
         response = self.handle_request(
             method="POST",
-            url=url
+            url=url,
+            data=params
         )
 
     def stock_availability(self, resp: dict) -> dict:
         """
         Требует данных с nm_2_cards
-        Обработка полученного ответа от api wildberries.
+        Обработка полученного ответа от api wildberries и формирование информационной карточки о товаре.
 
-        Если есть товар, то достаём от туда цену и количество на складе.
+        Достаём лучшую цену, количество на складе, id объекта и формируем заготовку под способ доставки.
         :param resp: - ответ от сервера wildberries
         :return:
         """
 
         if not resp:
-            raise ValueError
+            raise ValueError  # Данные то быть должны
         else:
             try:
+                # Основной набор информации.
                 answ = {
                     "name": resp["data"]["products"][0]["name"],
                     "id_obj": resp["data"]["products"][0]['id'],
@@ -270,14 +320,17 @@ class Buyer_waildberries:
                     "AddressInfo": {}
                 }
             except Exception as ex:
-                print(f"Ошибка! \n{ex}")
+                print(f"Ошибка! \n{ex}")  # В очень ближайшем будущем заменю на нормальное логирование.
             if resp["data"]["products"][0]['sizes'][0]["stocks"]:
+                # Определение количества товара на складе
                 answ["quantity"] = resp["data"]["products"][0]['sizes'][0]["stocks"][0]["qty"]
 
             if "salePriceU" in resp["data"]["products"][0]:
+                # Определение лучшей цены с условием скидки (Измеряем не в копейках, а в руб.)
                 answ["prise"] = min(resp["data"]["products"][0]['priceU'],
                                     resp["data"]["products"][0]['salePriceU']) // 100
             else:
+                # Определение цены, если скидки не будет (Измеряем не в копейках, а в руб.)
                 answ["prise"] = resp["data"]["products"][0]['salePriceU'] // 100
 
             print(answ)
