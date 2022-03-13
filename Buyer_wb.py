@@ -1,9 +1,10 @@
 import urllib
 import json as JSON
+from typing import Tuple, Any, Union
 
-import logging
 from requests import Session
 from exceptions import ServerError
+from loguru import logger
 
 
 class Buyer_waildberries:
@@ -35,16 +36,20 @@ class Buyer_waildberries:
                 "name": "WILDAUTHNEW_V3",
                 "value": "37FA68E5534E5B17E068C1DB232582DC09B912692124BC4E622A8951D8BD72C97DB05A3651D644A49733651ACFD2ABF1C883BD131AC6C92550D32DD0587FB6186AFB3D3227F0BD2FF1B4B9CE525F4C6EC3FFB08CC18564A40BED82D9632AD40BB3BEA61DDC7BEFBE3C4B4A3C271D5C62B21CC30B903CC39BE0B50F17B44826A53CE7CB51E9A3CEA74703062CD09D7C8E11957F00F82D7FF02F1349DB5F90CB7A67C35FEAE77BB067C76A7DD52ED15114A8D73F3FFFFED7F9554D9F462388CE6D20C95E5A5602415FFA3A2A34AED5BBAC4A1FF40B21BADF8DBAC34D654C90B3DD0B6BEE5BA25BE54F6A2A58DFB690294451DD0451231F7E3823F3D475D6550477BBBEA23EEFC0A537A4B0B68048DCF65D864A4B14BD2C5367D873E44C9C6D79DA4325B123"
             }
-        self.proxy = {
+        self.proxies = {
             "https": "http://localhost:8888",
             "http": "http://localhost:8888"
         }
 
         self.session = Session()
+        logger.debug(f"Start session - {self.session}")
         self.headers = self.default_headers
         self.session.cookies.set(self.cookies["name"], self.cookies["value"])
+        logger.debug(f"Set cookies - {self.cookies}")
         self.session.headers.update(self.headers)
-        self.session.proxies.update(self.proxy)
+        logger.debug(f"Set headers - {self.headers}")
+        self.session.proxies.update(self.proxies)
+        logger.debug(f"Set proxies - {self.proxies}")
 
     def get_confirm_code(self, number: int) -> bool:
         """
@@ -79,6 +84,7 @@ class Buyer_waildberries:
         # 445
         url = "https://www.wildberries.ru/security/spa/signinsignup"
 
+    @logger.catch()
     def handle_errors(self, response: dict) -> bool:
         """Обработка ошибок
 
@@ -148,8 +154,10 @@ class Buyer_waildberries:
         # При различном теле запроса необходим различный тип.
         if data:
             self.session.headers['content-type'] = 'application/x-www-form-urlencoded; charset=UTF-8'
+            logger.debug(f"Set content-type:\napplication/x-www-form-urlencoded; charset=UTF-8")
         elif json:
             self.session.headers['content-type'] = "application/json"
+            logger.debug(f"Set content-type:\napplication/json")
         params = urllib.parse.urlencode(kwargs)  # Формирование строки с параметрами
         if params:
             url += f"?{params}"  # Ссылка для запроса с прараметрами
@@ -162,12 +170,19 @@ class Buyer_waildberries:
             data=data,
             verify=False
         )
+        logger.debug(f"Do request to server:\n"
+                     f"method - {method}\n"
+                     f"url - {url}\n"
+                     f"json - {json}\n"
+                     f"data - {data}")
         # Проверка на валидность ответа.
         if response.status_code == 200:
             response_dict = JSON.loads(response.text)
             self.handle_errors(response_dict)
+            logger.info(f'Successful - {url}')
             return response_dict
         else:
+            logger.error(ConnectionError)
             raise ConnectionError
 
     def add_to_basket(self):
@@ -177,7 +192,7 @@ class Buyer_waildberries:
         """
         pass
 
-    def info_about_cards(self, id_obj: int, ):
+    def info_about_cards(self, id_obj: int, ) -> tuple[dict[Any, dict], dict]:
         """
         Метод для добавдения товара в карзину через опцию - купить сейчас (количество: 1шт.)
         url - buy_now
@@ -185,17 +200,21 @@ class Buyer_waildberries:
         :return:
         """
 
+        logger.debug(f"Get info about - {id_obj}")
         data = self.stock_availability(self.nm_2_cards(id_obj))  # Получение данных о товаре.
+        logger.debug(f"Successful request about - {id_obj}")
         url = "https://www.wildberries.ru/lk/basket/buyitnow/data"
 
         # "x-spa-version": "9.1.3" - ОЧЕНЬ ВАЖНО ПРОВЕРЯТЬ!
 
         # Создание запроса для перевода товара в состояние перед покупкой.
+        logger.debug(f"Move {id_obj} to basket and create order.")
         resp = self.handle_request(
             method="POST",
             url=url,
             includeInOrderStr=data["optionId"]  # Берётся из карточки товара.
         )
+        logger.debug(f"Successful request basket_order - {id_obj}")
         for el in resp["value"]["data"]["basket"]["deliveryWays"]:
             if "selectedAddressId" in el:
                 # Получение информации о заказе, для оплаты или изменении способа оплаты.
@@ -216,8 +235,11 @@ class Buyer_waildberries:
                 }
         try:
             # Определение той карты, которая выбрана для оплаты.
-            open_cards[resp["value"]["data"]["basket"]["paymentType"]["selectedBankCard"]["name"]]["select"] = True
+            card = resp["value"]["data"]["basket"]["paymentType"]["selectedBankCard"]["name"]
+            open_cards[card]["select"] = True
+            logger.info(f"Define selected bank card - {card}")
         except KeyError:
+            logger.error(f"Incorrect payment option")
             print("Выбран способ платы не картой!")
         return open_cards, data
 
@@ -232,6 +254,7 @@ class Buyer_waildberries:
         :return:
         """
 
+        logger.info(f"Refresh choosing bank card to {name_bank_card}.")
         # POST https://www.wildberries.ru/spa/yandexaddress/editajax?version=2 # - Ссылка для определения addressId
         # POST https://www.wildberries.ru/spa/deliverypoints - Ссылка на проверку адресов доставки
         # POST https://www.wildberries.ru/spa/removeaddress - Ссылка на изменение адреса
@@ -264,22 +287,30 @@ class Buyer_waildberries:
             for name_card in open_cards.keys():
                 open_cards[name_card]['select'] = False
                 open_cards[name_bank_card]['select'] = True
+            logger.info(f"Successful change bank card to {name_card}")
             return True
+        actual_card = response["value"]["basket"]["paymentType"]["selectedBankCard"]["name"]
+        logger.error(f"Fail to change the card. Now select card - {actual_card}")
         print("Что-то пошло не так...")
-        print(f'Выбранная карта: {response["value"]["basket"]["paymentType"]["selectedBankCard"]["name"]}')
+        print(f'Выбранная карта: {actual_card}')
         return False
 
     def payment_by_card(self, data: dict, cards: dict):
         """
-        Запрос оплаты заказа. Ещё нужно тестировать...
+        Запрос оплаты заказа.
+        Необходимо сделать ввод кода с мобильного банка.
         :param cards: - Данные о доступных картах
         :param data: - Данные о товаре
         :return:
         """
+
         select_card_id = ""
         for card in cards.keys():
-            if cards[card]['select'] == True:
+            if cards[card]['select']:
                 select_card_id = cards[card]['id']
+                logger.info(f"Order payment start:\n"
+                            f"id object - {data['id_obj']}\n"
+                            f"select card - {card}")
         info = {
             "Delivery": data["AddressInfo"]["DeliveryWayCode"],
             "orderDetails.MaskedCardId": select_card_id,
@@ -295,6 +326,7 @@ class Buyer_waildberries:
             "orderDetails.IncludeInOrder[0]": data["optionId"],
             "orderDetails.UnloadCargoOption": ""
         }
+        logger.debug("Set info about delivery.")
         if data["AddressInfo"]["DeliveryWayCode"] == "self":
             info["address_self"] = data["AddressInfo"]["selectedAddressId"]
         elif data["AddressInfo"]["DeliveryWayCode"] == "courier":
@@ -310,14 +342,25 @@ class Buyer_waildberries:
         )
         try:
             params = response["value"]["url"].split("?")[1]
-        except KeyError:
+        except (KeyError, IndexError):
+            logger.error(f"Problems with payment:\n"
+                         f"{response['value']}")
             print(response["value"])
         if self.order_verification(params):
+            logger.info(f"Payment is successful:\n"
+                        f"id object - {data['id_obj']}\n"
+                        f"select card - {card}")
             print("Всё окей")
 
         else:
+            logger.error(f"Problems with payment status\n"
+                         f"id object - {data['id_obj']}\n"
+                         f"select card - {card}")
             print("Что-то случилось со статусом оплаты заказа...")
         print(f"Заказ: {params}")
+        logger.info(f"Successful order:\n"
+                    f"id object - {data['id_obj']}\n"
+                    f"select card - {card}")
 
     def order_verification(self, params: str) -> bool:
         """
