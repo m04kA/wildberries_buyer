@@ -1,7 +1,7 @@
 import urllib
 import json as JSON
 
-import requests
+import logging
 from requests import Session
 from exceptions import ServerError
 
@@ -14,7 +14,7 @@ class Buyer_waildberries:
     default_headers = {
         'Connection': 'keep-alive',
         "content-type": "application/json",
-        "x-spa-version": "9.1.2.2",
+        "x-spa-version": "9.1.3",
         "x-requested-with": "XMLHttpRequest",
         "sec-ch-ua": '" Not A;Brand";v="99", "Chromium";v="99", "Google Chrome";v="99"',
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.102 Safari/537.36',
@@ -33,7 +33,7 @@ class Buyer_waildberries:
         else:
             self.cookies = {
                 "name": "WILDAUTHNEW_V3",
-                "value": "85B61481EEAF36117A6425ED3ED709C5083CFA8D21B2FCBFE526B8116B375FD347D65242BC4C2A58395AD7D58AA7BB64DFA083ED75A6FE057C18E19EF0B9C80A183456DCEBD436E342023BB8805EBBC3F72090F5F9D1902EE5A810053E9EB4DBE83E00A3D7F7842913248D7775E7B3BEA26B1B6662A581AD5CF23E3C675910F94656AC1B421CA1BFA33E5BC0123EC8D64091B3E41BF68EFFF937A527FBB39B1E99A2E932B2A9E6AA6B7FF8EB045AD089C61CE222D3AD576BAEB87E2DBD96072571A0CB38C5C177C2E7B8B47D77F3C05BC550B38C7878D10E8519458DD8F3A2CC054AA0F249E0B14C1FE357EB3E71D3375011C974F97B3D36FEF63E019019F60B3F1558D883BAE1BB3ED2BD7A6ACB6183C1E73B5A438CA980AC0E75798D8416EBEFA50493"
+                "value": "37FA68E5534E5B17E068C1DB232582DC09B912692124BC4E622A8951D8BD72C97DB05A3651D644A49733651ACFD2ABF1C883BD131AC6C92550D32DD0587FB6186AFB3D3227F0BD2FF1B4B9CE525F4C6EC3FFB08CC18564A40BED82D9632AD40BB3BEA61DDC7BEFBE3C4B4A3C271D5C62B21CC30B903CC39BE0B50F17B44826A53CE7CB51E9A3CEA74703062CD09D7C8E11957F00F82D7FF02F1349DB5F90CB7A67C35FEAE77BB067C76A7DD52ED15114A8D73F3FFFFED7F9554D9F462388CE6D20C95E5A5602415FFA3A2A34AED5BBAC4A1FF40B21BADF8DBAC34D654C90B3DD0B6BEE5BA25BE54F6A2A58DFB690294451DD0451231F7E3823F3D475D6550477BBBEA23EEFC0A537A4B0B68048DCF65D864A4B14BD2C5367D873E44C9C6D79DA4325B123"
             }
         self.proxy = {
             "https": "http://localhost:8888",
@@ -44,7 +44,7 @@ class Buyer_waildberries:
         self.headers = self.default_headers
         self.session.cookies.set(self.cookies["name"], self.cookies["value"])
         self.session.headers.update(self.headers)
-        # self.session.proxies.update(self.proxy)
+        self.session.proxies.update(self.proxy)
 
     def get_confirm_code(self, number: int) -> bool:
         """
@@ -159,7 +159,8 @@ class Buyer_waildberries:
             method=method,
             url=url,
             json=json,
-            data=data
+            data=data,
+            verify=False
         )
         # Проверка на валидность ответа.
         if response.status_code == 200:
@@ -186,6 +187,8 @@ class Buyer_waildberries:
 
         data = self.stock_availability(self.nm_2_cards(id_obj))  # Получение данных о товаре.
         url = "https://www.wildberries.ru/lk/basket/buyitnow/data"
+
+        # "x-spa-version": "9.1.3" - ОЧЕНЬ ВАЖНО ПРОВЕРЯТЬ!
 
         # Создание запроса для перевода товара в состояние перед покупкой.
         resp = self.handle_request(
@@ -256,20 +259,31 @@ class Buyer_waildberries:
         )
 
         # Проверка на правильность выполнения запроса. Если карта изменилась на ту, что мы указывали - всё правильно.
-        if name_bank_card is response["value"]["basket"]["paymentType"]["selectedBankCard"]["name"]:
+        if name_bank_card == response["value"]["basket"]["paymentType"]["selectedBankCard"]["name"]:
             print(f"Выбранная карта: {name_bank_card}")
+            for name_card in open_cards.keys():
+                open_cards[name_card]['select'] = False
+                open_cards[name_bank_card]['select'] = True
             return True
-        print(f'Выбранная карта: {response["value"]["data"]["basket"]["paymentType"]["selectedBankCard"]["name"]}')
+        print("Что-то пошло не так...")
+        print(f'Выбранная карта: {response["value"]["basket"]["paymentType"]["selectedBankCard"]["name"]}')
         return False
 
-    def payment_by_card(self, data: dict):
+    def payment_by_card(self, data: dict, cards: dict):
         """
         Запрос оплаты заказа. Ещё нужно тестировать...
-        :param data:
+        :param cards: - Данные о доступных картах
+        :param data: - Данные о товаре
         :return:
         """
+        select_card_id = ""
+        for card in cards.keys():
+            if cards[card]['select'] == True:
+                select_card_id = cards[card]['id']
         info = {
             "Delivery": data["AddressInfo"]["DeliveryWayCode"],
+            "orderDetails.MaskedCardId": select_card_id,
+            "orderDetails.SberPayPhone": "",
             "orderDetails.DeliveryWay": data["AddressInfo"]["DeliveryWayCode"],
             "orderDetails.DeliveryPointId": data["AddressInfo"]["selectedAddressId"],
             "orderDetails.DeliveryPrice": "",  # courier -> int | self -> “”
@@ -285,7 +299,7 @@ class Buyer_waildberries:
             info["address_self"] = data["AddressInfo"]["selectedAddressId"]
         elif data["AddressInfo"]["DeliveryWayCode"] == "courier":
             info["address_courier"] = data["AddressInfo"]["selectedAddressId"]
-            info["DeliveryPrice"] = data["AddressInfo"]["DeliveryPrice"]
+            info["orderDetails.DeliveryPrice"] = data["AddressInfo"]["DeliveryPrice"]
 
         url = "https://www.wildberries.ru/lk/basket/spa/submitorder"
         params = urllib.parse.urlencode(info)
@@ -294,6 +308,34 @@ class Buyer_waildberries:
             url=url,
             data=params
         )
+        try:
+            params = response["value"]["url"].split("?")[1]
+        except KeyError:
+            print(response["value"])
+        if self.order_verification(params):
+            print("Всё окей")
+
+        else:
+            print("Что-то случилось со статусом оплаты заказа...")
+        print(f"Заказ: {params}")
+
+    def order_verification(self, params: str) -> bool:
+        """
+        Метод проверки корректности заказа.
+
+        :param params: принимать из payment_by_card после создания и оплаты заказа.
+        :return:
+        """
+        url = "https://www.wildberries.ru/lk/order/confirmed/data?" + params
+        response = self.handle_request(
+            method="POST",
+            url=url
+        )
+        if response["value"]["data"]["order"]["orderPaymentStatus"] == "success":
+            print("Оплата произошла успешно.")
+            return True
+        print("Какие-то проблемы с оплатой заказа.")
+        return False
 
     def stock_availability(self, resp: dict) -> dict:
         """
