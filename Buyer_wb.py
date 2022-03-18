@@ -16,7 +16,7 @@ class Buyer_waildberries:
     default_headers = {
         'Connection': 'keep-alive',
         "content-type": "application/json",
-        "x-spa-version": "9.1.3.13",
+        "x-spa-version": "9.1.3.14",
         "x-requested-with": "XMLHttpRequest",
         "sec-ch-ua": '" Not A;Brand";v="99", "Chromium";v="99", "Google Chrome";v="99"',
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.102 Safari/537.36',
@@ -35,7 +35,7 @@ class Buyer_waildberries:
         else:
             self.cookies = {
                 "name": "WILDAUTHNEW_V3",
-                "value": "81F09FCC52FC00B3D6F8CF4D1DE9AB1C79C76627203375EC04043DB6CD854FE1C18F7AD910AC730A78E9D9AE971173EC3572EC180D0CDB81C4378CAE6A5EBAAFC7631F719F6EDFDDB11D7A514B964A4C3B85274F2A8029AA19B011AA2906E25DD86E357C349128FF227F9D2A3F2ADAE89C13B572C9059E203FD5B0068DF13736607E03559BEDA358DDEB5283F2C647E06C8F4B15B7D36F1F9C667B672887A106BBE89437476C2CF0C3AFD16F6B2278CB384BAF1C2A5FD7969DF4E407B23C3893C1808B5303D5A77C53126509FABA8AC5EB67AE3D"
+                "value": "850DF0BD4FBC743CE60C3E968411DE396707F7E2279FF5D4E6C0AD4FED933726E10A8B3D359918AF477427CDE48DB628489EC63BF64B4360E1F819BDFFF0D10058A07469B413AE4E387BC5C66068A90C9AAD85BD4EE34F5BAD19BD1262D2FF51461CF38516408941B6D0A92448E5258482F5226B5D0E87DED64E17C790A6F1DB18B25A5D30DE5459A5A1868133E82D46EC2EC0ADAF486A66A36A4A93C363BED541FAD7364324B0B358C1439A94D838A59D8474BB2F706F3A569F67FC36160AE807513941539E83C239C3E6854103D3B5383216C625C9C46385F75716C9814ECB774AE003ED59D3D3A41199580423A2846CD535919DBDFCF082BE3AA7F42050EAE386AB3EEEF708959CFACAE6A512B8376E482D6F789EBFFEC555799A239D9C30E73C28DF"
             }
         self.proxies = {
             "https": "http://localhost:8888",
@@ -193,6 +193,7 @@ class Buyer_waildberries:
         Метод, который в дальнейшем будет использоваться для закупки определённого количества товара.
         :return:
         """
+        self.del_all_obj_in_basket()
         url = "https://www.wildberries.ru/product/addtobasket"
         # Формируем тело запроса
         info = {
@@ -212,6 +213,48 @@ class Buyer_waildberries:
             logger.info(f"Successful add to basket object (id - {self.data['id_obj']}; quantity - {quantity})")
             return True
         return False
+
+    def get_info_from_basket(self) -> list:
+        """
+        Достаём id всех заказов для отчистки корзины.
+        :return:
+        """
+        logger.info(f"Get info from basket.")
+        url = "https://www.wildberries.ru/lk/basket/data"
+        response = self.handle_request(
+            method="POST",
+            url=url
+        )
+        answ = []
+        empty = {
+            "resultState": 0
+        }
+        if response == empty:
+            return answ
+        items = response["value"]["data"]["basket"]["basketItemsByDeliveryDate"][0]["items"]
+        for el in items:
+            answ.append(el['id'])
+        logger.info(f"Successful get info from basket.")
+        return answ
+
+    def del_all_obj_in_basket(self):
+        """
+        Функция по полной отчистке корзины
+        :return:
+        """
+        optionIds = self.get_info_from_basket()
+        logger.info(f"Delete {optionIds} from basket")
+        url = "https://www.wildberries.ru/lk/basket/spa/delete"
+        for id in optionIds:
+            info = {"chrtIds[0]": id}
+            params = urllib.parse.urlencode(info)
+            response = self.handle_request(
+                method="POST",
+                url=url,
+                data=params
+            )
+
+        logger.info(f"Successful delete {optionIds} from basket")
 
     def get_delivery_info(self, data: dict) -> dict:
         """
@@ -244,7 +287,7 @@ class Buyer_waildberries:
         logger.debug(f"Successful request about - {id_obj}")
 
         if not self.add_to_basket(1):
-            raise ValueError("Wrong add to basket.")
+            raise ValueError("Wrong add to basket. (some obj there is...)")
         else:
             print(f'Товар успешно добавлен в корзину (id - {self.data["id_obj"]})')
 
@@ -269,25 +312,13 @@ class Buyer_waildberries:
         # Обнавляем данные о товре - добавление доставки
         self.data = self.data | self.get_delivery_info(data_help["deliveryWays"])
 
-        # for el in data_help["deliveryWays"]:
-        #     if "selectedAddressId" in el:
-        #         # Получение информации о заказе, для оплаты или изменении способа оплаты.
-        #         if el["selectedAddressId"]:
-        #             self.data["AddressInfo"]["DeliveryWayCode"] = el["code"]
-        #             self.data["AddressInfo"]["selectedAddressId"] = el["selectedAddressId"]
-        #             if el["code"] == "courier":
-        #                 if len(el["calendars"]) > 0:
-        #                     self.data["AddressInfo"]["DeliveryPrice"] = el["calendars"][0]["deliveryPrice"]
-
-        open_cards = {}
-        for el in data_help["paymentTypes"][0]["bankCards"]:
-            # Формирование словаря со всеми доступными картами и необходимой информацией о них.
-            if not el["createNew"]:
-                open_cards[el["name"]] = {
-                    "id": el["id"],
-                    "system": el["system"],
-                    "select": False
-                }
+        try:
+            bank_cards = data_help["paymentTypes"][0]["bankCards"]
+        except KeyError as ex:
+            error = data_help["paymentTypes"][0]["errorTip"]
+            logger.error(f'Delivery is not define. (id obj - {self.data["id_obj"]})')
+            raise KeyError(error)
+        open_cards = self.create_dict_open_card(bank_cards)
         try:
             # Определение той карты, которая выбрана для оплаты.
             card = resp["value"]["data"]["basket"]["paymentType"]["selectedBankCard"]["name"]
@@ -297,6 +328,22 @@ class Buyer_waildberries:
             logger.error(f"Incorrect payment option")
             print("Выбран способ платы не картой!")
         return open_cards
+
+    def create_dict_open_card(self, data: list) -> dict:
+        """
+        Создание списка доступных банковских карт на аккаунте.
+        :param data:
+        :return:
+        """
+        answ = {}
+        for el in data:
+            if not el["createNew"]:
+                answ[el["name"]] = {
+                    "id": el["id"],
+                    "system": el["system"],
+                    "select": False
+                }
+        return answ
 
     def choosing_a_bank_card(self, name_bank_card: str, open_cards: dict) -> bool:
         """
