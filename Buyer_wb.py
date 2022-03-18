@@ -53,12 +53,12 @@ class Buyer_waildberries:
         self.session.proxies.update(self.proxies)
         logger.debug(f"Set proxies - {self.proxies}")
 
-    def get_confirm_code(self, number: int) -> bool:
+    def get_confirm_code(self, number: int):
         """
         Авторизация и ввод кода.
         Метод недописан, ещё необходимо проверить:
-        5150 - ввод нечитаемых символов с картинки (https://www.wildberries.ru/security/spa/checkcatpcharequirements?forAction=EasyLogin)
-        5149. - запрос кода (https://www.wildberries.ru/security/spa/signinprevphone)
+        ввод нечитаемых символов с картинки (https://www.wildberries.ru/security/spa/checkcatpcharequirements?forAction=EasyLogin)
+        запрос кода (https://www.wildberries.ru/security/spa/signinprevphone)
 
         :param number:
         :return:
