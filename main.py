@@ -8,7 +8,7 @@ import logging_conf
 
 def main():
     # id товара, на котором тестируем.
-    id_obj = 26047228
+    id_obj = 31206532
     my_test = Buyer_waildberries()
 
     cards = my_test.info_about_cards(id_obj)

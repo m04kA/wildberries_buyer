@@ -1,10 +1,9 @@
 import urllib
 import json as JSON
 from pprint import pprint
-from typing import Tuple, Any, Union
-
 from requests import Session
 from exceptions import ServerError
+from SingIn import get_cookie_user
 from loguru import logger
 
 
@@ -16,7 +15,7 @@ class Buyer_waildberries:
     default_headers = {
         'Connection': 'keep-alive',
         "content-type": "application/json",
-        "x-spa-version": "9.1.3.12",
+        "x-spa-version": "9.1.3.20",
         "x-requested-with": "XMLHttpRequest",
         "sec-ch-ua": '" Not A;Brand";v="99", "Chromium";v="99", "Google Chrome";v="99"',
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.102 Safari/537.36',
@@ -33,9 +32,10 @@ class Buyer_waildberries:
                 "value": cookies
             }
         else:
+            my_cookie = get_cookie_user()
             self.cookies = {
                 "name": "WILDAUTHNEW_V3",
-                "value": "81F09FCC52FC00B3D6F8CF4D1DE9AB1C79C76627203375EC04043DB6CD854FE1C18F7AD910AC730A78E9D9AE971173EC3572EC180D0CDB81C4378CAE6A5EBAAFC7631F719F6EDFDDB11D7A514B964A4C3B85274F2A8029AA19B011AA2906E25DD86E357C349128FF227F9D2A3F2ADAE89C13B572C9059E203FD5B0068DF13736607E03559BEDA358DDEB5283F2C647E06C8F4B15B7D36F1F9C667B672887A106BBE89437476C2CF0C3AFD16F6B2278CB384BAF1C2A5FD7969DF4E407B23C3893C1808B5303D5A77C53126509FABA8AC5EB67AE3D"
+                "value": my_cookie
             }
         self.proxies = {
             "https": "http://localhost:8888",
@@ -53,12 +53,12 @@ class Buyer_waildberries:
         self.session.proxies.update(self.proxies)
         logger.debug(f"Set proxies - {self.proxies}")
 
-    def get_confirm_code(self, number: int) -> bool:
+    def get_confirm_code(self, number: int):
         """
         Авторизация и ввод кода.
         Метод недописан, ещё необходимо проверить:
-        5150 - ввод нечитаемых символов с картинки (https://www.wildberries.ru/security/spa/checkcatpcharequirements?forAction=EasyLogin)
-        5149. - запрос кода (https://www.wildberries.ru/security/spa/signinprevphone)
+        ввод нечитаемых символов с картинки (https://www.wildberries.ru/security/spa/checkcatpcharequirements?forAction=EasyLogin)
+        запрос кода (https://www.wildberries.ru/security/spa/signinprevphone)
 
         :param number:
         :return:
@@ -193,7 +193,9 @@ class Buyer_waildberries:
         Метод, который в дальнейшем будет использоваться для закупки определённого количества товара.
         :return:
         """
+        self.del_all_obj_in_basket()
         url = "https://www.wildberries.ru/product/addtobasket"
+        # Формируем тело запроса
         info = {
             "cod1S": self.data["id_obj"],
             "characteristicId": self.data["optionId"],
@@ -206,10 +208,71 @@ class Buyer_waildberries:
             url=url,
             data=params
         )
+        # Проверка на соответствие в корзине.
         if response["value"]["basketInfo"]["basketQuantity"] == quantity:
             logger.info(f"Successful add to basket object (id - {self.data['id_obj']}; quantity - {quantity})")
             return True
         return False
+
+    def get_info_from_basket(self) -> list:
+        """
+        Достаём id всех заказов для отчистки корзины.
+        :return:
+        """
+        logger.info(f"Get info from basket.")
+        url = "https://www.wildberries.ru/lk/basket/data"
+        response = self.handle_request(
+            method="POST",
+            url=url
+        )
+        answ = []
+        empty = {
+            "resultState": 0
+        }
+        if response == empty:
+            return answ
+        items = response["value"]["data"]["basket"]["basketItemsByDeliveryDate"][0]["items"]
+        for el in items:
+            answ.append(el['id'])
+        logger.info(f"Successful get info from basket.")
+        return answ
+
+    def del_all_obj_in_basket(self):
+        """
+        Функция по полной отчистке корзины
+        :return:
+        """
+        optionIds = self.get_info_from_basket()
+        logger.info(f"Delete {optionIds} from basket")
+        url = "https://www.wildberries.ru/lk/basket/spa/delete"
+        for id in optionIds:
+            info = {"chrtIds[0]": id}
+            params = urllib.parse.urlencode(info)
+            response = self.handle_request(
+                method="POST",
+                url=url,
+                data=params
+            )
+
+        logger.info(f"Successful delete {optionIds} from basket")
+
+    def get_delivery_info(self, data: dict) -> dict:
+        """
+        Получаем информацию о доставке из запроса по добавлению товара в корзину.
+        :param data: - response
+        :return:
+        """
+        answer = {"AddressInfo": {}}
+        for el in data:
+            if "selectedAddressId" in el:
+                # Получение информации о заказе, для оплаты или изменении способа оплаты.
+                if el["selectedAddressId"]:
+                    answer["AddressInfo"]["DeliveryWayCode"] = el["code"]
+                    answer["AddressInfo"]["selectedAddressId"] = el["selectedAddressId"]
+                    if el["code"] == "courier":
+                        if len(el["calendars"]) > 0:
+                            answer["AddressInfo"]["DeliveryPrice"] = el["calendars"][0]["deliveryPrice"]
+        return answer
 
     def info_about_cards(self, id_obj: int, ) -> dict:
         """
@@ -224,7 +287,7 @@ class Buyer_waildberries:
         logger.debug(f"Successful request about - {id_obj}")
 
         if not self.add_to_basket(1):
-            raise ValueError("Wrong add to basket.")
+            raise ValueError("Wrong add to basket. (some obj there is...)")
         else:
             print(f'Товар успешно добавлен в корзину (id - {self.data["id_obj"]})')
 
@@ -246,25 +309,16 @@ class Buyer_waildberries:
             # "x-spa-version": "9.1.3.12" - ОЧЕНЬ ВАЖНО ПРОВЕРЯТЬ!
             logger.error(f"Wrong headers! (id - {self.data['id_obj']})")
             raise KeyError("Wrong headers!")
-        for el in data_help["deliveryWays"]:
-            if "selectedAddressId" in el:
-                # Получение информации о заказе, для оплаты или изменении способа оплаты.
-                if el["selectedAddressId"]:
-                    self.data["AddressInfo"]["DeliveryWayCode"] = el["code"]
-                    self.data["AddressInfo"]["selectedAddressId"] = el["selectedAddressId"]
-                    if el["code"] == "courier":
-                        if len(el["calendars"]) > 0:
-                            self.data["AddressInfo"]["DeliveryPrice"] = el["calendars"][0]["deliveryPrice"]
+        # Обнавляем данные о товре - добавление доставки
+        self.data = self.data | self.get_delivery_info(data_help["deliveryWays"])
 
-        open_cards = {}
-        for el in data_help["paymentTypes"][0]["bankCards"]:
-            # Формирование словаря со всеми доступными картами и необходимой информацией о них.
-            if not el["createNew"]:
-                open_cards[el["name"]] = {
-                    "id": el["id"],
-                    "system": el["system"],
-                    "select": False
-                }
+        try:
+            bank_cards = data_help["paymentTypes"][0]["bankCards"]
+        except KeyError as ex:
+            error = data_help["paymentTypes"][0]["errorTip"]
+            logger.error(f'Delivery is not define. (id obj - {self.data["id_obj"]})')
+            raise KeyError(error)
+        open_cards = self.create_dict_open_card(bank_cards)
         try:
             # Определение той карты, которая выбрана для оплаты.
             card = resp["value"]["data"]["basket"]["paymentType"]["selectedBankCard"]["name"]
@@ -274,6 +328,22 @@ class Buyer_waildberries:
             logger.error(f"Incorrect payment option")
             print("Выбран способ платы не картой!")
         return open_cards
+
+    def create_dict_open_card(self, data: list) -> dict:
+        """
+        Создание списка доступных банковских карт на аккаунте.
+        :param data:
+        :return:
+        """
+        answ = {}
+        for el in data:
+            if not el["createNew"]:
+                answ[el["name"]] = {
+                    "id": el["id"],
+                    "system": el["system"],
+                    "select": False
+                }
+        return answ
 
     def choosing_a_bank_card(self, name_bank_card: str, open_cards: dict) -> bool:
         """
@@ -314,18 +384,56 @@ class Buyer_waildberries:
         )
 
         # Проверка на правильность выполнения запроса. Если карта изменилась на ту, что мы указывали - всё правильно.
-        if name_bank_card == response["value"]["basket"]["paymentType"]["selectedBankCard"]["name"]:
-            print(f"Выбранная карта: {name_bank_card}")
-            for name_card in open_cards.keys():
-                open_cards[name_card]['select'] = False
-                open_cards[name_bank_card]['select'] = True
-            logger.info(f"Successful change bank card to {name_card}")
+        flag = self.check_right_card(
+            name_bank_card,
+            response["value"]["basket"]["paymentType"]["selectedBankCard"]["name"]
+        )
+        if flag:
+            open_cards = self.update_select_card(open_cards, name_bank_card)
+        return flag
+
+        # if name_bank_card == response["value"]["basket"]["paymentType"]["selectedBankCard"]["name"]:
+        #     print(f"Выбранная карта: {name_bank_card}")
+        #     logger.info(f'Select bank card - {name_bank_card}')
+        #     for name_card in open_cards.keys():
+        #         open_cards[name_card]['select'] = False
+        #     open_cards[name_bank_card]['select'] = True
+        #     logger.info(f"Successful change bank card to {name_card}")
+        #     return True
+        # actual_card = response["value"]["basket"]["paymentType"]["selectedBankCard"]["name"]
+        # logger.error(f"Fail to change the card. Now select card - {actual_card}")
+        # print("Что-то пошло не так...")
+        # print(f'Выбранная карта: {actual_card}')
+        # return False
+
+    def check_right_card(self, number: str, response_number: str) -> bool:
+        """
+        Проверка на успех замены карты
+        :param number: - Номер нашей выбранной карты
+        :param response_number: - Номер карты из ответа сервера.
+        :return: - True, если всё совпадает иначе False
+        """
+        if number == response_number:
+            print(f"Выбранная карта: {number}")
+            logger.info(f'Select bank card - {number}')
             return True
-        actual_card = response["value"]["basket"]["paymentType"]["selectedBankCard"]["name"]
-        logger.error(f"Fail to change the card. Now select card - {actual_card}")
+        logger.error(f"Fail to change the card. Now select card - {response_number}")
         print("Что-то пошло не так...")
-        print(f'Выбранная карта: {actual_card}')
+        print(f'Выбранная карта: {response_number}')
         return False
+
+    def update_select_card(self, open_cards: dict, select_card: str) -> dict:
+        """
+        Обновление динамических данных о доступных карточек для оплаты.
+        :param open_cards: - Старый набор данных о доступных картах
+        :param select_card: - Номер выбранной карты, с которой будет оплата.
+        :return:
+        """
+        for name_card in open_cards.keys():
+            open_cards[name_card]['select'] = False
+        open_cards[select_card]['select'] = True
+        logger.info(f"Successful change bank card to {name_card}")
+        return open_cards
 
     def payment_by_card(self, cards: dict):
         """

@@ -178,6 +178,7 @@ def get_product_info(id: int) -> dict:
     ).dicts()
     return info
 
+# comment
 
 def get_card_info(number: str) -> dict:
     """
@@ -189,6 +190,7 @@ def get_card_info(number: str) -> dict:
     info = Cards.select().where(
         Cards.number == number
     ).dicts()
+    logger.debug(f'get info')
     return info
 
 
