@@ -1,10 +1,9 @@
 import urllib
 import json as JSON
 from pprint import pprint
-from typing import Tuple, Any, Union
-
 from requests import Session
 from exceptions import ServerError
+from SingIn import get_cookie_user
 from loguru import logger
 
 
@@ -16,7 +15,7 @@ class Buyer_waildberries:
     default_headers = {
         'Connection': 'keep-alive',
         "content-type": "application/json",
-        "x-spa-version": "9.1.3.14",
+        "x-spa-version": "9.1.3.20",
         "x-requested-with": "XMLHttpRequest",
         "sec-ch-ua": '" Not A;Brand";v="99", "Chromium";v="99", "Google Chrome";v="99"',
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.102 Safari/537.36',
@@ -33,9 +32,10 @@ class Buyer_waildberries:
                 "value": cookies
             }
         else:
+            my_cookie = get_cookie_user()
             self.cookies = {
                 "name": "WILDAUTHNEW_V3",
-                "value": "850DF0BD4FBC743CE60C3E968411DE396707F7E2279FF5D4E6C0AD4FED933726E10A8B3D359918AF477427CDE48DB628489EC63BF64B4360E1F819BDFFF0D10058A07469B413AE4E387BC5C66068A90C9AAD85BD4EE34F5BAD19BD1262D2FF51461CF38516408941B6D0A92448E5258482F5226B5D0E87DED64E17C790A6F1DB18B25A5D30DE5459A5A1868133E82D46EC2EC0ADAF486A66A36A4A93C363BED541FAD7364324B0B358C1439A94D838A59D8474BB2F706F3A569F67FC36160AE807513941539E83C239C3E6854103D3B5383216C625C9C46385F75716C9814ECB774AE003ED59D3D3A41199580423A2846CD535919DBDFCF082BE3AA7F42050EAE386AB3EEEF708959CFACAE6A512B8376E482D6F789EBFFEC555799A239D9C30E73C28DF"
+                "value": my_cookie
             }
         self.proxies = {
             "https": "http://localhost:8888",
