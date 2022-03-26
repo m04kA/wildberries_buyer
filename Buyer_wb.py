@@ -15,7 +15,6 @@ class Buyer_waildberries:
     default_headers = {
         'Connection': 'keep-alive',
         "content-type": "application/json",
-        "x-spa-version": "9.1.3.20",
         "x-requested-with": "XMLHttpRequest",
         "sec-ch-ua": '" Not A;Brand";v="99", "Chromium";v="99", "Google Chrome";v="99"',
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.102 Safari/537.36',
@@ -110,6 +109,7 @@ class Buyer_waildberries:
         :param id_obj: - id товара.
         :return:
         """
+        logger.debug(f"Get info about - {id_obj}")
         return self.handle_request(method="GET",
                                    url="https://wbxcatalog-ru.wildberries.ru/nm-2-card/catalog",
                                    json=None,
@@ -282,9 +282,8 @@ class Buyer_waildberries:
         :return:
         """
 
-        logger.debug(f"Get info about - {id_obj}")
-        self.data = self.stock_availability(self.nm_2_cards(id_obj))  # Получение данных о товаре.
-        logger.debug(f"Successful request about - {id_obj}")
+
+        # self.data = self.stock_availability(self.nm_2_cards(id_obj))  # Получение данных о товаре.
 
         if not self.add_to_basket(1):
             raise ValueError("Wrong add to basket. (some obj there is...)")
@@ -558,5 +557,5 @@ class Buyer_waildberries:
             else:
                 # Определение цены, если скидки не будет (Измеряем не в копейках, а в руб.)
                 answ["prise"] = resp["data"]["products"][0]['salePriceU'] // 100
-            logger.debug(f"Get info about - {answ['id_obj']}")
+            logger.debug(f"Succesful get info about - {answ['id_obj']}")
             return answ

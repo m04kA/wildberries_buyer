@@ -8,31 +8,28 @@ bot = aiogram.Bot(token='5270879131:AAF95EAuk0hH7r4Ga7P2UNWBoUBK7O8DDVI')
 dp = aiogram.Dispatcher(bot, run_tasks_by_default=True)
 
 
-def send_message_info_item(data: dict = None):
+def send_message_info_item(data: dict = None, id_user: int = 764461859):
+    """
+    Функция отправки сообщения с кнопкой, предаставляющая возможность купить товар, который был в карточки.
+    :param data:
+    :param id_user:
+    :return:
+    """
     start = time.time()
     while True:
         loop = asyncio.get_event_loop()
         try:
             if data:
-                info = data
+                info = dataloop.run_until_complete(
+                    bot.send_message(id_user, f"```{json.dumps(info)}```",
+                                     reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
+                                         InlineKeyboardButton('Купить!',
+                                                              callback_data=f"buy.{data['optionId']}.{data['quantity']}")
+                                     ]]), parse_mode="MarkdownV2"))
             else:
                 info = {
-                    'AddressInfo': {
-                        'DeliveryPrice': 199,
-                        'DeliveryWayCode': 'courier',
-                        'selectedAddressId': '7yJVe8E9jWnmHV5l1rvNN0WDOaM='
-                    },
-                    'id_obj': 31231133,
-                    'name': 'Чехол для телефона Samsung Galaxy A72 / Самсунг Гэлакси А72',
-                    'optionId': 68149834,
-                    'prise': 39,
-                    'quantity': 1}
-            loop.run_until_complete(
-                bot.send_message(764461859, f"```{json.dumps(info)}```",
-                                 reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
-                                     InlineKeyboardButton('Купить!',
-                                                          callback_data=f"buy.{data['optionId']}.{data['quantity']}")
-                                 ]]), parse_mode="MarkdownV2"))
+                    'message': 'Data is none.'}
+                loop.run_until_complete(bot.send_message(id_user, f"```{json.dumps(info)}```", parse_mode="MarkdownV2"))
             time.sleep(15)
         except KeyboardInterrupt:
             loop.run_until_complete(bot.send_message(764461859, "Всего доброго"))
@@ -40,4 +37,4 @@ def send_message_info_item(data: dict = None):
             break
 
 
-send_message_info_item()
+# send_message_info_item()

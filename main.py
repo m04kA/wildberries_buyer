@@ -1,5 +1,5 @@
 from pprint import pprint
-
+from TG.Send_mesg_tg import *
 import requests
 import json
 from Buyer_wb import *
@@ -14,6 +14,7 @@ def main():
     for id_obj in id_objkts:
         my_test.data = my_test.stock_availability(my_test.nm_2_cards(id_obj))
         if my_test.data["quantity"] > 0:
+            # send_message_info_item(data=my_test.data)
             cards = my_test.info_about_cards(id_obj)
             pprint(cards)
             # for key in cards.keys():
@@ -26,8 +27,8 @@ def main():
                 name_card = input("Скопируйте и вставьте номер карты: ")
                 flag = my_test.choosing_a_bank_card(name_bank_card=name_card, open_cards=cards)
 
-            if my_test.data["quantity"] > 0:
-                flag = my_test.payment_by_card(cards)
+            # if my_test.data["quantity"] > 0:
+            #     flag = my_test.payment_by_card(cards)
 
 
 if __name__ == "__main__":
