@@ -1,0 +1,43 @@
+import asyncio
+import json
+import time
+import aiogram
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+
+bot = aiogram.Bot(token='5270879131:AAF95EAuk0hH7r4Ga7P2UNWBoUBK7O8DDVI')
+dp = aiogram.Dispatcher(bot, run_tasks_by_default=True)
+
+
+def send_message_info_item(data: dict = None):
+    start = time.time()
+    while True:
+        loop = asyncio.get_event_loop()
+        try:
+            if data:
+                info = data
+            else:
+                info = {
+                    'AddressInfo': {
+                        'DeliveryPrice': 199,
+                        'DeliveryWayCode': 'courier',
+                        'selectedAddressId': '7yJVe8E9jWnmHV5l1rvNN0WDOaM='
+                    },
+                    'id_obj': 31231133,
+                    'name': 'Чехол для телефона Samsung Galaxy A72 / Самсунг Гэлакси А72',
+                    'optionId': 68149834,
+                    'prise': 39,
+                    'quantity': 1}
+            loop.run_until_complete(
+                bot.send_message(764461859, f"```{json.dumps(info)}```",
+                                 reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
+                                     InlineKeyboardButton('Купить!',
+                                                          callback_data=f"buy.{data['optionId']}.{data['quantity']}")
+                                 ]]), parse_mode="MarkdownV2"))
+            time.sleep(15)
+        except KeyboardInterrupt:
+            loop.run_until_complete(bot.send_message(764461859, "Всего доброго"))
+        if time.time() - start > 31:
+            break
+
+
+send_message_info_item()

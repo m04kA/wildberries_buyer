@@ -530,6 +530,7 @@ class Buyer_waildberries:
         :return:
         """
 
+
         if not resp:
             raise ValueError  # Данные то быть должны
         else:
@@ -557,5 +558,5 @@ class Buyer_waildberries:
             else:
                 # Определение цены, если скидки не будет (Измеряем не в копейках, а в руб.)
                 answ["prise"] = resp["data"]["products"][0]['salePriceU'] // 100
-
+            logger.debug(f"Get info about - {answ['id_obj']}")
             return answ
