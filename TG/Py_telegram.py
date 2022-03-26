@@ -18,8 +18,6 @@ dp = aiogram.Dispatcher(bot, run_tasks_by_default=True, storage=MemoryStorage())
 
 data_users = {}
 
-quantity = 0
-id_obj = 0
 
 
 @dp.message_handler(content_types=['text', 'document', 'audio'])
@@ -37,7 +35,7 @@ async def get_text_messages(message: aiogram.types.Message):
 
 @dp.callback_query_handler()
 async def process_callback_button1(callback_query: aiogram.types.CallbackQuery):
-    global quantity, id_obj,data_users
+    global data_users
     state = dp.current_state(user=callback_query.from_user.id)  # ?
     callback_data = callback_query.data.split('.')
     if callback_data[0] == 'buy':
@@ -60,7 +58,7 @@ async def process_callback_button1(callback_query: aiogram.types.CallbackQuery):
 
 @dp.message_handler(state=TestStates.TEST_STATE_0)
 async def buy(message: aiogram.types.Message):
-    global quantity
+    global data_users
     state = dp.current_state(user=message.from_user.id)
     if not message.text.isdigit():
         await message.answer("Ошибочный ввод\n"
@@ -70,9 +68,11 @@ async def buy(message: aiogram.types.Message):
                              "Введите количество товара товара: ")
     else:
         data_users[message.from_user]["quantity"] = int(message.text)
-        print("Заглушка закупки товара...")
+        cards = my_test.info_about_cards(id_obj)
+        pprint(cards)
         await state.reset_state()
         del data_users[message.from_user]
+
 
 executor = aiogram.executor.Executor(
     loop=asyncio.get_event_loop(),

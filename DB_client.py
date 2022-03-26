@@ -66,7 +66,7 @@ class Product(Model):
     :last_update: - Последнее обновление записи
     """
 
-    id = IntegerField(null=False)
+    id_obj = IntegerField(null=False)
     optionId = IntegerField(null=False)
     name = CharField(null=True)
     price = BigIntegerField(null=True)
@@ -100,11 +100,31 @@ class Cards(Model):
 Cards.create_table()
 
 
-def update_product(id, optionId: int = None, name: str = None, price: int = None, quantity: int = None):
+class Delivery(Model):
+    """
+    Модель банковских карт хранит все необходимые параметры:
+    :number: - Номер карты
+    :hash: - Хеш карты для wildberries
+    :active: - Активная сейчас или отключена
+    :last_update: - Последнее обновление записи
+    """
+    id = ForeignKeyField()
+    hash = CharField(null=False)
+    active = BooleanField(null=False, default=False)
+    last_update = DateTimeField(default=datetime.now())
+
+    class Meta:
+        database = data_base
+
+
+Cards.create_table()
+
+
+def update_product(id_obj, optionId: int = None, name: str = None, price: int = None, quantity: int = None):
     """
     Обновление или добавление данных о товаре:
-    :param id:  - Id товара
-    :param optionId: - Id заказа с товаром
+    :param id_obj:  - id_obj товара
+    :param optionId: - id_obj заказа с товаром
     :param name: - Название
     :param price: - Цена
     :param quantity: - Количество товара
@@ -113,27 +133,27 @@ def update_product(id, optionId: int = None, name: str = None, price: int = None
     """
 
     try:
-        row = Product.get(Product.id == id)
+        row = Product.get(Product.id_obj == id_obj)
         if optionId:
-            logger.info(f"Update optionId {row.optionId} to {optionId} (id object - {id})")
+            logger.info(f"Update optionId {row.optionId} to {optionId} (id_obj object - {id_obj})")
             row.optionId = optionId
         if name:
-            logger.info(f"Update name {row.name} to {name} (id object - {id})")
+            logger.info(f"Update name {row.name} to {name} (id_obj object - {id_obj})")
             row.name = name
         if price:
-            logger.info(f"Update name {row.price} to {price} (id object - {id})")
+            logger.info(f"Update name {row.price} to {price} (id_obj object - {id_obj})")
             row.price = price
         if quantity:
-            logger.info(f"Update name {row.quantity} to {quantity} (id object - {id})")
+            logger.info(f"Update name {row.quantity} to {quantity} (id_obj object - {id_obj})")
             row.quantity = quantity
         if name or price or quantity:
-            row.last_update = datetime.datetime.now()
+            row.last_update = datetime.now()
     except DoesNotExist:
         logger.info(f'Create new product \n'
-                    f'id={id}, optionId={optionId}, name={name}, price={price}, quantity={quantity}')
-        row = Product.create(id=id, optionId=optionId, name=name, price=price, quantity=quantity)
+                    f'id_obj={id_obj}, optionId={optionId}, name={name}, price={price}, quantity={quantity}')
+        row = Product.create(id_obj=id_obj, optionId=optionId, name=name, price=price, quantity=quantity)
     row.save()
-    logger.info(f'Finish update operation with obj (id - {id})')
+    logger.info(f'Finish update operation with obj (id_obj - {id_obj})')
 
 
 def update_card(number: str, hash: str = None, active: bool = None):
@@ -164,7 +184,7 @@ def update_card(number: str, hash: str = None, active: bool = None):
     logger.info(f'Finish update operation with obj (number card - {number})')
 
 
-def get_product_info(id: int) -> dict:
+def get_product_info(id_obj: int) -> dict:
     """
     Получение данных о товаре из таблицы в БД:
     Возвращает список словарей со всеми параметрами
@@ -172,11 +192,21 @@ def get_product_info(id: int) -> dict:
     :return:
     """
 
-    logger.debug(f"Get info about product (id - {id})")
+    logger.debug(f"Get info about product (id_obj - {id_obj})")
     info = Product.select().where(
-        Product.id == id
-    ).dicts()
-    return info
+        Product.id_obj == id_obj
+    )
+    if len(info):
+        answ = {
+            'id_obj': info.id_obj,
+            'name': info.name,
+            'optionId': info.optionId,
+            'price': info.price,
+            'quantity': info.quantity
+        }
+        return answ
+    return {}
+
 
 # comment
 
@@ -226,11 +256,15 @@ def get_active_cards() -> list:
 
 Process finished with exit code 0
 """
-
 update_product(
-    id=31231134,
+    id_obj=31231134,
     optionId=68149834,
     name='Чехол для телефона Samsung Galaxy A72 / Самсунг Гэлакси А72',
     price=39,
-    quantity=1
+    quantity=2
 )
+data = get_product_info(31231134)
+print("---------")
+print(data)
+print("---------")
+

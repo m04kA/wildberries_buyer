@@ -30,11 +30,8 @@ def get_cookie_user() -> str:
     my_cookies = driver.get_cookie('WILDAUTHNEW_V3')["value"]
     # driver.get("https://www.wildberries.ru/data?")
     # headers = driver.execute_script("var req = new XMLHttpRequest();req.open('GET', document.location, false);req.send(null);return req.getAllResponseHeaders()")
-
-    # type(headers) == str
-
     # headers = headers.splitlines()
-    # print(headers)
+    print(my_cookies)
 
     driver.close()
     logger.debug("Close chrome")
