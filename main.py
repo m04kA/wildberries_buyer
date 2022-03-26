@@ -14,7 +14,7 @@ def main():
     for id_obj in id_objkts:
         my_test.data = my_test.stock_availability(my_test.nm_2_cards(id_obj))
         if my_test.data["quantity"] > 0:
-            # send_message_info_item(data=my_test.data)
+            send_message_info_item(data=my_test.data)
             cards = my_test.info_about_cards(id_obj)
             pprint(cards)
             # for key in cards.keys():

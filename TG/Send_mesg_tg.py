@@ -20,7 +20,8 @@ def send_message_info_item(data: dict = None, id_user: int = 764461859):
         loop = asyncio.get_event_loop()
         try:
             if data:
-                info = dataloop.run_until_complete(
+                info = data
+                loop.run_until_complete(
                     bot.send_message(id_user, f"```{json.dumps(info)}```",
                                      reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
                                          InlineKeyboardButton('Купить!',

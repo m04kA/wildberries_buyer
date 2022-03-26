@@ -14,6 +14,7 @@ class Buyer_waildberries:
 
     default_headers = {
         'Connection': 'keep-alive',
+        "x-spa-version": "9.1.6.1",
         "content-type": "application/json",
         "x-requested-with": "XMLHttpRequest",
         "sec-ch-ua": '" Not A;Brand";v="99", "Chromium";v="99", "Google Chrome";v="99"',
@@ -49,8 +50,8 @@ class Buyer_waildberries:
         logger.debug(f"Set cookies - {self.cookies}")
         self.session.headers.update(self.headers)
         logger.debug(f"Set headers - {self.headers}")
-        self.session.proxies.update(self.proxies)
-        logger.debug(f"Set proxies - {self.proxies}")
+        # self.session.proxies.update(self.proxies)
+        # logger.debug(f"Set proxies - {self.proxies}")
 
     def get_confirm_code(self, number: int):
         """
