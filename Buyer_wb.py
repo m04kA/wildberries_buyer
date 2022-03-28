@@ -14,7 +14,6 @@ class Buyer_waildberries:
 
     default_headers = {
         'Connection': 'keep-alive',
-        "x-spa-version": "9.1.6.2",
         "content-type": "application/json",
         "x-requested-with": "XMLHttpRequest",
         "sec-ch-ua": '" Not A;Brand";v="99", "Chromium";v="99", "Google Chrome";v="99"',
@@ -50,8 +49,8 @@ class Buyer_waildberries:
         logger.debug(f"Set cookies - {self.cookies}")
         self.session.headers.update(self.headers)
         logger.debug(f"Set headers - {self.headers}")
-        # self.session.proxies.update(self.proxies)
-        # logger.debug(f"Set proxies - {self.proxies}")
+        self.session.proxies.update(self.proxies)
+        logger.debug(f"Set proxies - {self.proxies}")
 
     def get_confirm_code(self, number: int):
         """
@@ -275,7 +274,7 @@ class Buyer_waildberries:
                             answer["AddressInfo"]["DeliveryPrice"] = el["calendars"][0]["deliveryPrice"]
         return answer
 
-    def info_about_cards(self, id_obj: int, quantity: int = 1) -> dict:
+    def info_about_cards(self, id_obj: int, ) -> dict:
         """
         Метод для добавдения товара в карзину через опцию - купить сейчас (количество: 1шт.)
         url - buy_now
@@ -283,9 +282,10 @@ class Buyer_waildberries:
         :return:
         """
 
+
         # self.data = self.stock_availability(self.nm_2_cards(id_obj))  # Получение данных о товаре.
 
-        if not self.add_to_basket(quantity):
+        if not self.add_to_basket(1):
             raise ValueError("Wrong add to basket. (some obj there is...)")
         else:
             print(f'Товар успешно добавлен в корзину (id - {self.data["id_obj"]})')
@@ -528,6 +528,7 @@ class Buyer_waildberries:
         :param resp: - ответ от сервера wildberries
         :return:
         """
+
 
         if not resp:
             raise ValueError  # Данные то быть должны
