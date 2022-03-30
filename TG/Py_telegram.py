@@ -68,8 +68,8 @@ async def buy(message: aiogram.types.Message):
                              "Введите количество товара товара: ")
     else:
         data_users[message.from_user]["quantity"] = int(message.text)
-        cards = my_test.info_about_cards(id_obj)
-        pprint(cards)
+        # cards = my_test.info_about_cards(id_obj)
+        # pprint(cards)
         await state.reset_state()
         del data_users[message.from_user]
 

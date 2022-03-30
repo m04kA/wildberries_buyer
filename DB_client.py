@@ -36,7 +36,7 @@ def get_base_client():
 
     if base['type'] == 'sqlite3':
         name = f'{base["dbname"]}.{base["type"]}'
-        db = SqliteDatabase(name)
+        db = SqliteDatabase(name, pragmas={'foreign_keys': 1})
 
     elif base['type'] == 'mysql':
         db = MySQLDatabase(
@@ -55,7 +55,16 @@ logger.info(f"Connect to data base {config_base['dbname']}")
 data_base = get_base_client()
 
 
-class Product(Model):
+class Base_class(Model):
+    """
+    Базовый класс подключения к БД
+    """
+
+    class Meta:
+        database = data_base
+
+
+class Product(Base_class):
     """
     Модель товара хранит все необходимые параметры:
     :id: - Id товара
@@ -66,21 +75,18 @@ class Product(Model):
     :last_update: - Последнее обновление записи
     """
 
-    id_obj = IntegerField(null=False)
+    id_obj = PrimaryKeyField(null=False)
     optionId = IntegerField(null=False)
     name = CharField(null=True)
     price = BigIntegerField(null=True)
     quantity = IntegerField(null=True)
     last_update = DateTimeField(default=datetime.now())
 
-    class Meta:
-        database = data_base
-
 
 Product.create_table()
 
 
-class Cards(Model):
+class Cards(Base_class):
     """
     Модель банковских карт хранит все необходимые параметры:
     :number: - Номер карты
@@ -88,39 +94,55 @@ class Cards(Model):
     :active: - Активная сейчас или отключена
     :last_update: - Последнее обновление записи
     """
+    id = PrimaryKeyField(index=True, null=False)
     number = CharField(null=False)
     hash = CharField(null=False)
     active = BooleanField(null=False, default=False)
     last_update = DateTimeField(default=datetime.now())
 
-    class Meta:
-        database = data_base
-
 
 Cards.create_table()
 
 
-class Delivery(Model):
+class Users(Base_class):
     """
-    Модель банковских карт хранит все необходимые параметры:
-    :number: - Номер карты
-    :hash: - Хеш карты для wildberries
-    :active: - Активная сейчас или отключена
-    :last_update: - Последнее обновление записи
+    Модель пользователей, у которых будут свои корзины для заказа товаров.
+
+    :id: - id Пользователя в ТГ
     """
-    id = ForeignKeyField()
-    hash = CharField(null=False)
-    active = BooleanField(null=False, default=False)
+    id = PrimaryKeyField(null=False, unique=True)
     last_update = DateTimeField(default=datetime.now())
 
-    class Meta:
-        database = data_base
+
+Users.create_table()
 
 
-Cards.create_table()
+class Order(Base_class):
+    """
+    Модель банковских карт хранит все необходимые параметры:
+    :id: - id заказа
+    :id_user: - id пользователя
+    :id_obj: - id товара
+    :last_update: - Последнее обновление записи
+    """
+    id = PrimaryKeyField(index=True)
+    id_user = ForeignKeyField(Users.id, on_delete="cascade")
+    id_obj = ForeignKeyField(Product.id_obj, on_delete="cascade")
+    quantity = IntegerField(null=False, default=1)
+    last_update = DateTimeField(default=datetime.now())
 
 
-def update_product(id_obj, optionId: int = None, name: str = None, price: int = None, quantity: int = None):
+Order.create_table()
+
+
+class Delivery(Base_class):
+    id_order = ForeignKeyField(Order.id, null=True, on_delete="cascade")
+    deliveryWayCode = CharField(null=False)
+    selectedAddressId = CharField(null=False)
+    deliveryPrice = CharField(default=None)
+
+
+def update_product(id_obj: int, optionId: int = None, name: str = None, price: int = None, quantity: int = None):
     """
     Обновление или добавление данных о товаре:
     :param id_obj:  - id_obj товара
@@ -133,9 +155,9 @@ def update_product(id_obj, optionId: int = None, name: str = None, price: int = 
     """
 
     try:
-        row = Product.get(Product.id_obj == id_obj)
+        row: Order = Product.get(Product.id_obj == id_obj)
         if optionId:
-            logger.info(f"Update optionId {row.optionId} to {optionId} (id_obj object - {id_obj})")
+            logger.info(f"Update optionId {row.op} to {optionId} (id_obj object - {id_obj})")
             row.optionId = optionId
         if name:
             logger.info(f"Update name {row.name} to {name} (id_obj object - {id_obj})")
@@ -156,39 +178,11 @@ def update_product(id_obj, optionId: int = None, name: str = None, price: int = 
     logger.info(f'Finish update operation with obj (id_obj - {id_obj})')
 
 
-def update_card(number: str, hash: str = None, active: bool = None):
-    """
-    Обновление или добавление данных о товаре:
-    :param number:  - Номер карты
-    :param hash: - Хеш карты для wildberries
-    :param active: - Активная сейчас или отключена
-    :last_update: - Последнее обновление записи
-    :return:
-    """
-
-    try:
-        row = Cards.get(Cards.number == number)
-        if hash:
-            logger.info(f"Update name {row.hash} to {hash} (number card - {number})")
-            row.hash = hash
-        if active != None:
-            logger.info(f"Update name {row.active} to {active} (number card - {number})")
-            row.active = active
-        if hash or active:
-            row.last_update = datetime.datetime.now()
-    except DoesNotExist:
-        logger.info(f'Create new product \n'
-                    f'number={number}, hash={hash}, active={active}')
-        row = Cards.create(number=number, hash=hash, active=active)
-    row.save()
-    logger.info(f'Finish update operation with obj (number card - {number})')
-
-
 def get_product_info(id_obj: int) -> dict:
     """
     Получение данных о товаре из таблицы в БД:
     Возвращает список словарей со всеми параметрами
-    :param id: id товара
+    :param id_obj: - id продукта
     :return:
     """
 
@@ -208,7 +202,39 @@ def get_product_info(id_obj: int) -> dict:
     return {}
 
 
-# comment
+def delete_product(id_obj: int):
+    logger.info(f"Delete product (id_obj - {id_obj})")
+    product = Product.get(Product.id_obj == id_obj)
+    product.delete_instance()
+
+
+def update_card(number: str, hash: str = None, active: bool = None):
+    """
+    Обновление или добавление данных о товаре:
+    :param number:  - Номер карты
+    :param hash: - Хеш карты для wildberries
+    :param active: - Активная сейчас или отключена
+    :last_update: - Последнее обновление записи
+    :return:
+    """
+
+    try:
+        row: Cards = Cards.get(Cards.number == number)
+        if hash:
+            logger.info(f"Update name {row.hash} to {hash} (number card - {number})")
+            row.hash = hash
+        if active != None:
+            logger.info(f"Update name {row.active} to {active} (number card - {number})")
+            row.active = active
+        if hash or active:
+            row.last_update = datetime.datetime.now()
+    except DoesNotExist:
+        logger.info(f'Create new product \n'
+                    f'number={number}, hash={hash}, active={active}')
+        row = Cards.create(number=number, hash=hash, active=active)
+    row.save()
+    logger.info(f'Finish update operation with obj (number card - {number})')
+
 
 def get_card_info(number: str) -> dict:
     """
@@ -234,6 +260,163 @@ def get_active_cards() -> list:
         Cards.active == True
     ).dicts()
     return list(cards)
+
+
+def delete_product(number: str):
+    logger.info(f"Delete bank card (number - {number})")
+    product = Product.get(Cards.number == number)
+    product.delete_instance()
+
+
+def create_user(id: int):
+    """
+    Обновление или добавление данных о товаре:
+    :param id:  - id пользователя
+    """
+
+    row = Users.create(id=id)
+    row.save()
+    logger.info(f'Finish update operation with obj (id_obj - {id})')
+
+
+def get_user_info(id: int) -> dict:
+    """
+    Получение данных о пользователе из таблицы в БД:
+    Возвращает список словарей со всеми параметрами
+    :param id: - id Пользователя
+    :return:
+    """
+
+    logger.debug(f"Get info about user (id - {id})")
+    info = Users.select().where(
+        Users.id == id
+    )
+    if len(info):
+        answ = {
+            'id': info.id,
+        }
+        return answ
+    return {}
+
+
+def delete_user(id: int):
+    logger.info(f"Delete user (id - {id})")
+    product = Users.get(Product.id == id)
+    product.delete_instance()
+
+
+def update_order(id_user: int, id_obj: int, quantity: int = None):
+    """
+    Обновление или добавление данных о товаре:
+    :param id_user:  - id_obj товара
+    :param id_obj: - id_obj заказа с товаром
+    :param quantity: - Количество товара
+    :last_update: - Последнее обновление записи
+    :return:
+    """
+
+    try:
+        row: Order = Order.get(Order.id_user == id_user and Order.id_obj == id_obj)
+        if quantity:
+            logger.info(f"Update quantity {row.quantity} to {quantity} (id order - {row.id})")
+            row.quantity = quantity
+            row.last_update = datetime.now()
+    except DoesNotExist:
+        row = Order.create(id=row.id, id_user=id_user, id_obj=id_obj, quantity=quantity)
+        logger.info(f'Create new order \n'
+                    f'id={row.id}, id_user={id_user}, id_obj={id_obj}, quantity={quantity}')
+    row.save()
+    logger.info(f'Finish update operation with order (id order - {row.id})')
+
+
+def get_order_info(id_user: int, id_obj: int) -> dict:
+    """
+    Получение данных о товаре из таблицы в БД:
+    Возвращает список словарей со всеми параметрами
+    :param id_user: - id пользователя
+    :param id_obj: - id продукта
+    :return: - Словарь с данными по заказу
+    """
+
+    logger.debug(f"Get info about order (id_obj - {id_obj})")
+    info: Order = Order.get(Order.id_user == id_user and Order.id_obj == id_obj)
+    if len(info):
+        answ = {
+            'id': info.id,
+            'id_user': info.id_user,
+            'id_obj': info.id_obj,
+            'quantity': info.quantity
+        }
+        return answ
+    return {}
+
+
+def delete_order(id_user: int, id_obj: int):
+    order: Order = Order.get(Order.id_user == id_user and Order.id_obj == id_obj)
+    logger.info(f"Delete order (id - {order.id})")
+    order.delete_instance()
+
+
+def update_delivery(id_order: int, deliveryWayCode: str = None, selectedAddressId: str = None,
+                    deliveryPrice: str = None):
+    """
+    Обновление или добавление данных о товаре:
+    :param id_order:  - id заказа
+    :param deliveryWayCode: - код доставки (self - пункт выдачи / courier - курьером)
+    :param selectedAddressId: - id места доставки
+    :param deliveryPrice: - Цена доставки при deliveryWayCode = courier
+    :last_update: - Последнее обновление записи
+    :return:
+    """
+
+    try:
+        row: Delivery = Delivery.get(Delivery.id_order == id_order)
+        if deliveryWayCode:
+            logger.info(
+                f"Update deliveryWayCode {row.deliveryWayCode} to {deliveryWayCode} (id order - {row.id_order})")
+            row.deliveryWayCode = deliveryWayCode
+        if selectedAddressId:
+            logger.info(
+                f"Update selectedAddressId {row.selectedAddressId} to {selectedAddressId} (id order - {row.id_order})")
+            row.selectedAddressId = selectedAddressId
+        if deliveryPrice:
+            logger.info(f"Update selectedAddressId {row.deliveryPrice} to {deliveryPrice} (id order - {row.id_order})")
+            row.deliveryPrice = deliveryPrice
+        if deliveryWayCode or selectedAddressId or deliveryPrice:
+            row.last_update = datetime.now()
+    except DoesNotExist:
+        row = Delivery.create(id_order=row.id_order, deliveryWayCode=deliveryWayCode, selectedAddressId=selectedAddressId, deliveryPrice=deliveryPrice)
+        logger.info(f'Create new order \n'
+                    f'id_order={row.id_order}, deliveryWayCode={deliveryWayCode}, selectedAddressId={selectedAddressId}, deliveryPrice={deliveryPrice}')
+    row.save()
+    logger.info(f'Finish update operation with delivery (id_order - {id_order})')
+
+
+def get_delivery_info(id_order: int) -> dict:
+    """
+    Получение данных о товаре из таблицы в БД:
+    Возвращает список словарей со всеми параметрами
+    :param id_order: - id заказа
+    :return: - Словарь с данными по заказу
+    """
+
+    logger.debug(f"Get info about delivery (id order - {id_order})")
+    info: Delivery = Delivery.get(Delivery.id_order == id_order)
+    if len(info):
+        answ = {
+            'id_order': info.id_order,
+            'deliveryWayCode': info.deliveryWayCode,
+            'selectedAddressId': info.selectedAddressId,
+            'deliveryPrice': info.deliveryPrice
+        }
+        return answ
+    return {}
+
+
+def delete_order(id_order: int):
+    delivery: Delivery = Order.get(Delivery.id_order == id_order)
+    logger.info(f"Delete order (id - {delivery.id_order})")
+    delivery.delete_instance()
 
 
 """
@@ -267,4 +450,3 @@ data = get_product_info(31231134)
 print("---------")
 print(data)
 print("---------")
-

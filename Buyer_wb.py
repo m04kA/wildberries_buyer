@@ -52,39 +52,6 @@ class Buyer_waildberries:
         self.session.proxies.update(self.proxies)
         logger.debug(f"Set proxies - {self.proxies}")
 
-    def get_confirm_code(self, number: int):
-        """
-        Авторизация и ввод кода.
-        Метод недописан, ещё необходимо проверить:
-        ввод нечитаемых символов с картинки (https://www.wildberries.ru/security/spa/checkcatpcharequirements?forAction=EasyLogin)
-        запрос кода (https://www.wildberries.ru/security/spa/signinprevphone)
-
-        :param number:
-        :return:
-        """
-        url = "https://www.wildberries.ru/mobile/requestconfirmcode?forAction=EasyLogin"
-        json = {
-            "phoneInput.AgreeToReceiveSmsSpam": False,
-            "phoneInput.ConfirmCode": None,  # ?
-            "phoneInput.FullPhoneMobile": number,
-            "returnUrl": "https://www.wildberries.ru/",
-            "phonemobile": number,
-            "agreeToReceiveSms": False,
-            "shortSession": False,
-            "period": "ru",
-            "prevPhoneAuth": number
-        }
-        resp = self.handle_request(
-            method="POST",
-            url="https://www.wildberries.ru/mobile/requestconfirmcode",
-            json=json,
-            forAction="EasyLogin"
-        )
-
-    def init_auth(self) -> bool:
-        # 445
-        url = "https://www.wildberries.ru/security/spa/signinsignup"
-
     @logger.catch()
     def handle_errors(self, response: dict) -> bool:
         """Обработка ошибок
@@ -281,7 +248,6 @@ class Buyer_waildberries:
         :param id_obj: - id товара, которы мы хотим купить(положить в корзину)
         :return:
         """
-
 
         # self.data = self.stock_availability(self.nm_2_cards(id_obj))  # Получение данных о товаре.
 
@@ -528,7 +494,6 @@ class Buyer_waildberries:
         :param resp: - ответ от сервера wildberries
         :return:
         """
-
 
         if not resp:
             raise ValueError  # Данные то быть должны
