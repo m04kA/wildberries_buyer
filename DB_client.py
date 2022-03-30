@@ -142,6 +142,9 @@ class Delivery(Base_class):
     deliveryPrice = CharField(default=None)
 
 
+Delivery.create_table()
+
+
 def update_product(id_obj: int, optionId: int = None, name: str = None, price: int = None, quantity: int = None):
     """
     Обновление или добавление данных о товаре:
@@ -155,9 +158,9 @@ def update_product(id_obj: int, optionId: int = None, name: str = None, price: i
     """
 
     try:
-        row: Order = Product.get(Product.id_obj == id_obj)
+        row: Product = Product.get(Product.id_obj == id_obj)
         if optionId:
-            logger.info(f"Update optionId {row.op} to {optionId} (id_obj object - {id_obj})")
+            logger.info(f"Update optionId {row.optionId} to {optionId} (id_obj object - {id_obj})")
             row.optionId = optionId
         if name:
             logger.info(f"Update name {row.name} to {name} (id_obj object - {id_obj})")
@@ -187,19 +190,23 @@ def get_product_info(id_obj: int) -> dict:
     """
 
     logger.debug(f"Get info about product (id_obj - {id_obj})")
-    info = Product.select().where(
-        Product.id_obj == id_obj
-    )
-    if len(info):
-        answ = {
-            'id_obj': info.id_obj,
-            'name': info.name,
-            'optionId': info.optionId,
-            'price': info.price,
-            'quantity': info.quantity
-        }
-        return answ
-    return {}
+    try:
+        info = Product.select().where(
+            Product.id_obj == id_obj
+        ).get()
+        if len(info):
+            answ = {
+                'id_obj': info.id_obj,
+                'name': info.name,
+                'optionId': info.optionId,
+                'price': info.price,
+                'quantity': info.quantity
+            }
+            return answ
+    except Product.DoesNotExist as ex:
+        logger.error(f"Product (id - {id_obj}) doesn`t exist.")
+        print(f"Product (id - {id_obj}) doesn`t exist.")
+        return {}
 
 
 def delete_product(id_obj: int):
@@ -218,20 +225,18 @@ def update_card(number: str, hash: str = None, active: bool = None):
     :return:
     """
 
-    try:
-        row: Cards = Cards.get(Cards.number == number)
-        if hash:
-            logger.info(f"Update name {row.hash} to {hash} (number card - {number})")
-            row.hash = hash
-        if active != None:
-            logger.info(f"Update name {row.active} to {active} (number card - {number})")
-            row.active = active
-        if hash or active:
-            row.last_update = datetime.datetime.now()
-    except DoesNotExist:
-        logger.info(f'Create new product \n'
-                    f'number={number}, hash={hash}, active={active}')
-        row = Cards.create(number=number, hash=hash, active=active)
+    row: Cards = Cards.get(Cards.number == number)
+    if hash:
+        logger.info(f"Update name {row.hash} to {hash} (number card - {number})")
+        row.hash = hash
+    if active != None:
+        logger.info(f"Update name {row.active} to {active} (number card - {number})")
+        row.active = active
+    if hash or active:
+        row.last_update = datetime.datetime.now()
+    logger.info(f'Create new product \n'
+                f'number={number}, hash={hash}, active={active}')
+    row = Cards.create(number=number, hash=hash, active=active)
     row.save()
     logger.info(f'Finish update operation with obj (number card - {number})')
 
@@ -243,11 +248,16 @@ def get_card_info(number: str) -> dict:
     :return: - словарь с даными
     """
     logger.debug(f"Get info about bank card (number card - {number})")
-    info = Cards.select().where(
-        Cards.number == number
-    ).dicts()
-    logger.debug(f'get info')
-    return info
+    try:
+        info = Cards.select().where(
+            Cards.number == number
+        ).dicts()
+        logger.debug(f'Get info about card (number - {number})')
+        return info
+    except Cards.DoesNotExist:
+        logger.error(f"Card (number - {number}) doesn`t exist.")
+        print(f"Card (number - {number}) doesn`t exist.")
+        return {}
 
 
 def get_active_cards() -> list:
@@ -256,15 +266,20 @@ def get_active_cards() -> list:
     :return:
     """
     logger.debug(f"Get info about bank cards (active == True)")
-    cards = Cards.select().where(
-        Cards.active == True
-    ).dicts()
-    return list(cards)
+    try:
+        cards = Cards.select().where(
+            Cards.active == True
+        ).get()
+        return list(cards)
+    except Cards.DoesNotExist:
+        logger.error("Bank cards (active == True) doesn`t exist.")
+        print("Bank cards (active == True) doesn`t exist.")
+        return []
 
 
-def delete_product(number: str):
+def delete_card(number: str):
     logger.info(f"Delete bank card (number - {number})")
-    product = Product.get(Cards.number == number)
+    product = Cards.get(Cards.number == number)
     product.delete_instance()
 
 
@@ -286,17 +301,20 @@ def get_user_info(id: int) -> dict:
     :param id: - id Пользователя
     :return:
     """
-
     logger.debug(f"Get info about user (id - {id})")
-    info = Users.select().where(
-        Users.id == id
-    )
-    if len(info):
-        answ = {
-            'id': info.id,
-        }
-        return answ
-    return {}
+    try:
+        info = Users.select().where(
+            Users.id == id
+        ).get()
+        if len(info):
+            answ = {
+                'id': info.id,
+            }
+            return answ
+    except Users.DoesNotExist:
+        logger.error(f"User (id - {id}) doesn`t exist.")
+        print(f"User (id - {id}) doesn`t exist.")
+        return {}
 
 
 def delete_user(id: int):
@@ -315,16 +333,15 @@ def update_order(id_user: int, id_obj: int, quantity: int = None):
     :return:
     """
 
-    try:
-        row: Order = Order.get(Order.id_user == id_user and Order.id_obj == id_obj)
-        if quantity:
-            logger.info(f"Update quantity {row.quantity} to {quantity} (id order - {row.id})")
-            row.quantity = quantity
-            row.last_update = datetime.now()
-    except DoesNotExist:
-        row = Order.create(id=row.id, id_user=id_user, id_obj=id_obj, quantity=quantity)
-        logger.info(f'Create new order \n'
-                    f'id={row.id}, id_user={id_user}, id_obj={id_obj}, quantity={quantity}')
+    row: Order = Order.get(Order.id_user == id_user and Order.id_obj == id_obj)
+    if quantity:
+        logger.info(f"Update quantity {row.quantity} to {quantity} (id order - {row.id})")
+        row.quantity = quantity
+        row.last_update = datetime.now()
+
+    row = Order.create(id=row.id, id_user=id_user, id_obj=id_obj, quantity=quantity)
+    logger.info(f'Create new order \n'
+                f'id={row.id}, id_user={id_user}, id_obj={id_obj}, quantity={quantity}')
     row.save()
     logger.info(f'Finish update operation with order (id order - {row.id})')
 
@@ -338,17 +355,21 @@ def get_order_info(id_user: int, id_obj: int) -> dict:
     :return: - Словарь с данными по заказу
     """
 
-    logger.debug(f"Get info about order (id_obj - {id_obj})")
-    info: Order = Order.get(Order.id_user == id_user and Order.id_obj == id_obj)
-    if len(info):
-        answ = {
-            'id': info.id,
-            'id_user': info.id_user,
-            'id_obj': info.id_obj,
-            'quantity': info.quantity
-        }
-        return answ
-    return {}
+    try:
+        logger.debug(f"Get info about order (id_obj - {id_obj})")
+        info: Order = Order.get(Order.id_user == id_user and Order.id_obj == id_obj)
+        if len(info):
+            answ = {
+                'id': info.id,
+                'id_user': info.id_user,
+                'id_obj': info.id_obj,
+                'quantity': info.quantity
+            }
+            return answ
+    except Order.DoesNotExist:
+        logger.error(f"Order (id_user - {id_user}; id_obj - {id_obj}) doesn`t exist.")
+        print(f"Order (id_user - {id_user}; id_obj - {id_obj}) doesn`t exist.")
+        return {}
 
 
 def delete_order(id_user: int, id_obj: int):
@@ -385,7 +406,8 @@ def update_delivery(id_order: int, deliveryWayCode: str = None, selectedAddressI
         if deliveryWayCode or selectedAddressId or deliveryPrice:
             row.last_update = datetime.now()
     except DoesNotExist:
-        row = Delivery.create(id_order=row.id_order, deliveryWayCode=deliveryWayCode, selectedAddressId=selectedAddressId, deliveryPrice=deliveryPrice)
+        row = Delivery.create(id_order=row.id_order, deliveryWayCode=deliveryWayCode,
+                              selectedAddressId=selectedAddressId, deliveryPrice=deliveryPrice)
         logger.info(f'Create new order \n'
                     f'id_order={row.id_order}, deliveryWayCode={deliveryWayCode}, selectedAddressId={selectedAddressId}, deliveryPrice={deliveryPrice}')
     row.save()
@@ -400,17 +422,21 @@ def get_delivery_info(id_order: int) -> dict:
     :return: - Словарь с данными по заказу
     """
 
-    logger.debug(f"Get info about delivery (id order - {id_order})")
-    info: Delivery = Delivery.get(Delivery.id_order == id_order)
-    if len(info):
-        answ = {
-            'id_order': info.id_order,
-            'deliveryWayCode': info.deliveryWayCode,
-            'selectedAddressId': info.selectedAddressId,
-            'deliveryPrice': info.deliveryPrice
-        }
-        return answ
-    return {}
+    try:
+        logger.debug(f"Get info about delivery (id order - {id_order})")
+        info: Delivery = Delivery.get(Delivery.id_order == id_order)
+        if len(info):
+            answ = {
+                'id_order': info.id_order,
+                'deliveryWayCode': info.deliveryWayCode,
+                'selectedAddressId': info.selectedAddressId,
+                'deliveryPrice': info.deliveryPrice
+            }
+            return answ
+    except Delivery.DoesNotExist:
+        logger.error(f"Delivery for order (id_order - {id_order}) doesn`t exist.")
+        print(f"Delivery for order (id_order - {id_order}) doesn`t exist.")
+        return {}
 
 
 def delete_order(id_order: int):
@@ -446,7 +472,7 @@ update_product(
     price=39,
     quantity=2
 )
-data = get_product_info(31231134)
+data = get_product_info(31231135)
 print("---------")
 print(data)
 print("---------")
