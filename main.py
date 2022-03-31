@@ -3,6 +3,7 @@ from TG.Send_mesg_tg import *
 import requests
 import json
 from Buyer_wb import *
+from DataBase.plagins import *
 import logging_conf
 
 
@@ -12,9 +13,12 @@ def main():
     my_test = Buyer_waildberries()
 
     for id_obj in id_objkts:
-        my_test.data = my_test.stock_availability(my_test.nm_2_cards(id_obj))
+        data = my_test.stock_availability(my_test.nm_2_cards(id_obj))
+        my_test.data = data
+        update_product(obj=data['id_obj'], option=data["optionId"], name=data["name"], price=data["price"],
+                       quantity=data["quantity"])
         if my_test.data["quantity"] > 0:
-            # send_message_info_item(data=my_test.data)
+            send_message_info_item(data=my_test.data)
             cards = my_test.info_about_cards(id_obj)
             pprint(cards)
             # for key in cards.keys():

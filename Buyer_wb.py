@@ -49,8 +49,8 @@ class Buyer_waildberries:
         logger.debug(f"Set cookies - {self.cookies}")
         self.session.headers.update(self.headers)
         logger.debug(f"Set headers - {self.headers}")
-        self.session.proxies.update(self.proxies)
-        logger.debug(f"Set proxies - {self.proxies}")
+        # self.session.proxies.update(self.proxies)
+        # logger.debug(f"Set proxies - {self.proxies}")
 
     @logger.catch()
     def handle_errors(self, response: dict) -> bool:
@@ -241,7 +241,7 @@ class Buyer_waildberries:
                             answer["AddressInfo"]["DeliveryPrice"] = el["calendars"][0]["deliveryPrice"]
         return answer
 
-    def info_about_cards(self, id_obj: int, ) -> dict:
+    def info_about_cards(self, id_obj: int, quantity: int = 1) -> dict:
         """
         Метод для добавдения товара в карзину через опцию - купить сейчас (количество: 1шт.)
         url - buy_now
@@ -251,7 +251,7 @@ class Buyer_waildberries:
 
         # self.data = self.stock_availability(self.nm_2_cards(id_obj))  # Получение данных о товаре.
 
-        if not self.add_to_basket(1):
+        if not self.add_to_basket(quantity=quantity):
             raise ValueError("Wrong add to basket. (some obj there is...)")
         else:
             print(f'Товар успешно добавлен в корзину (id - {self.data["id_obj"]})')
@@ -504,7 +504,7 @@ class Buyer_waildberries:
                     "name": resp["data"]["products"][0]["name"],
                     "id_obj": resp["data"]["products"][0]['id'],
                     "quantity": 0,
-                    "prise": min(resp["data"]["products"][0]['priceU'],
+                    "price": min(resp["data"]["products"][0]['priceU'],
                                  resp["data"]["products"][0]['salePriceU']) // 100,
                     "optionId": resp["data"]["products"][0]['sizes'][0]["optionId"],
                     "AddressInfo": {}

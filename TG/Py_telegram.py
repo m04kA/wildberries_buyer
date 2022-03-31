@@ -3,7 +3,8 @@ import time
 import aiogram
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
-
+from Buyer_wb import *
+from DataBase.plagins import *
 from aiogram.utils.helper import Helper, HelperMode, ListItem
 
 
@@ -16,8 +17,9 @@ class TestStates(Helper):
 bot = aiogram.Bot(token='5270879131:AAF95EAuk0hH7r4Ga7P2UNWBoUBK7O8DDVI')
 dp = aiogram.Dispatcher(bot, run_tasks_by_default=True, storage=MemoryStorage())
 
-data_users = {}
+waildberries_b = Buyer_waildberries()
 
+data_users = {}
 
 
 @dp.message_handler(content_types=['text', 'document', 'audio'])
@@ -44,10 +46,8 @@ async def process_callback_button1(callback_query: aiogram.types.CallbackQuery):
                                f'В каком количестве вы хотите купить товар (id - {callback_data[1]})\n'
                                f'Максимум можно купить {callback_data[2]}')
 
-        data_users[callback_query.from_user] = {
-            "id_obj": int(callback_data[1]),
-            "quantity": int(callback_data[2])
-        }
+        create_user(int(callback_query.from_user))
+        waildberries_b.data = waildberries_b.stock_availability(waildberries_b.nm_2_cards(int(callback_data[1])))
 
         await state.set_state(TestStates.all()[0])
 
@@ -63,11 +63,15 @@ async def buy(message: aiogram.types.Message):
     if not message.text.isdigit():
         await message.answer("Ошибочный ввод\n"
                              "Введите количество товара товара: ")
-    elif int(message.text) <= 0 or int(message.text) > data_users[message.from_user]["quantity"]:
+    elif int(message.text) <= 0 or int(message.text) > waildberries_b.data["quantity"]:
         await message.answer("Ошибочный ввод\n"
                              "Введите количество товара товара: ")
     else:
-        data_users[message.from_user]["quantity"] = int(message.text)
+        quantity = int(message.text)
+        update_order(user=int(message.from_user.id), obj=waildberries_b.data['id_obj'], quantity=quantity)
+        cards_right = waildberries_b.info_about_cards(waildberries_b.data['id_obj'], quantity=quantity)
+        for name, value in cards_right.items():
+            update_card()
         # cards = my_test.info_about_cards(id_obj)
         # pprint(cards)
         await state.reset_state()
