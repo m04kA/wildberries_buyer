@@ -1,4 +1,6 @@
 from datetime import datetime, timedelta
+
+import peewee
 from peewee import *
 from loguru import logger
 
@@ -173,7 +175,7 @@ def update_product(id_obj: int, optionId: int = None, name: str = None, price: i
             row.quantity = quantity
         if name or price or quantity:
             row.last_update = datetime.now()
-    except DoesNotExist:
+    except peewee.DoesNotExist:
         logger.info(f'Create new product \n'
                     f'id_obj={id_obj}, optionId={optionId}, name={name}, price={price}, quantity={quantity}')
         row = Product.create(id_obj=id_obj, optionId=optionId, name=name, price=price, quantity=quantity)
@@ -191,19 +193,16 @@ def get_product_info(id_obj: int) -> dict:
 
     logger.debug(f"Get info about product (id_obj - {id_obj})")
     try:
-        info = Product.select().where(
-            Product.id_obj == id_obj
-        ).get()
-        if len(info):
-            answ = {
-                'id_obj': info.id_obj,
-                'name': info.name,
-                'optionId': info.optionId,
-                'price': info.price,
-                'quantity': info.quantity
-            }
-            return answ
-    except Product.DoesNotExist as ex:
+        info: Product = Product.get(Product.id_obj == id_obj)
+        answ = {
+            'id_obj': info.id_obj,
+            'optionId': info.optionId,
+            'name': info.name,
+            'price': info.price,
+            'quantity': info.quantity
+        }
+        return answ
+    except peewee.DoesNotExist:
         logger.error(f"Product (id - {id_obj}) doesn`t exist.")
         print(f"Product (id - {id_obj}) doesn`t exist.")
         return {}
@@ -211,8 +210,11 @@ def get_product_info(id_obj: int) -> dict:
 
 def delete_product(id_obj: int):
     logger.info(f"Delete product (id_obj - {id_obj})")
-    product = Product.get(Product.id_obj == id_obj)
-    product.delete_instance()
+    try:
+        product = Product.get(Product.id_obj == id_obj)
+        product.delete_instance()
+    except peewee.DoesNotExist:
+        logger.info(f"Error delete product (id_obj - {id_obj})")
 
 
 def update_card(number: str, hash: str = None, active: bool = None):
@@ -225,19 +227,21 @@ def update_card(number: str, hash: str = None, active: bool = None):
     :return:
     """
 
-    row: Cards = Cards.get(Cards.number == number)
-    if hash:
-        logger.info(f"Update name {row.hash} to {hash} (number card - {number})")
-        row.hash = hash
-    if active != None:
-        logger.info(f"Update name {row.active} to {active} (number card - {number})")
-        row.active = active
-    if hash or active:
-        row.last_update = datetime.datetime.now()
-    logger.info(f'Create new product \n'
-                f'number={number}, hash={hash}, active={active}')
-    row = Cards.create(number=number, hash=hash, active=active)
-    row.save()
+    try:
+        row: Cards = Cards.get(Cards.number == number)
+        if hash:
+            logger.info(f"Update name {row.hash} to {hash} (number card - {number})")
+            row.hash = hash
+        if active != None:
+            logger.info(f"Update name {row.active} to {active} (number card - {number})")
+            row.active = active
+        if hash or active:
+            row.last_update = datetime.now()
+        logger.info(f'Create new product \n'
+                    f'number={number}, hash={hash}, active={active}')
+    except peewee.DoesNotExist:
+        row = Cards.create(number=number, hash=hash, active=active)
+    row.save()  # Проверить id index
     logger.info(f'Finish update operation with obj (number card - {number})')
 
 
@@ -249,12 +253,16 @@ def get_card_info(number: str) -> dict:
     """
     logger.debug(f"Get info about bank card (number card - {number})")
     try:
-        info = Cards.select().where(
-            Cards.number == number
-        ).dicts()
+        info: Cards = Cards.get(Cards.number == number)
         logger.debug(f'Get info about card (number - {number})')
-        return info
-    except Cards.DoesNotExist:
+        answer = {
+            'id': info.id,
+            'number': info.number,
+            'hash': info.hash,
+            'active': info.active
+        }
+        return answer
+    except peewee.DoesNotExist:
         logger.error(f"Card (number - {number}) doesn`t exist.")
         print(f"Card (number - {number}) doesn`t exist.")
         return {}
@@ -267,11 +275,14 @@ def get_active_cards() -> list:
     """
     logger.debug(f"Get info about bank cards (active == True)")
     try:
-        cards = Cards.select().where(
-            Cards.active == True
-        ).get()
-        return list(cards)
-    except Cards.DoesNotExist:
+        cards = Cards.select().where(Cards.active == True)
+        answer = []
+        for card in cards:
+            answer.append(get_card_info(card.number))
+
+        # Как выдать нормальный список
+        return answer
+    except peewee.DoesNotExist:
         logger.error("Bank cards (active == True) doesn`t exist.")
         print("Bank cards (active == True) doesn`t exist.")
         return []
@@ -279,8 +290,11 @@ def get_active_cards() -> list:
 
 def delete_card(number: str):
     logger.info(f"Delete bank card (number - {number})")
-    product = Cards.get(Cards.number == number)
-    product.delete_instance()
+    try:
+        product = Cards.get(Cards.number == number)
+        product.delete_instance()
+    except peewee.DoesNotExist:
+        logger.error(f"Error delete card (number - {number}) -> does not exist.")
 
 
 def create_user(id: int):
@@ -311,7 +325,7 @@ def get_user_info(id: int) -> dict:
                 'id': info.id,
             }
             return answ
-    except Users.DoesNotExist:
+    except peewee.DoesNotExist:
         logger.error(f"User (id - {id}) doesn`t exist.")
         print(f"User (id - {id}) doesn`t exist.")
         return {}
@@ -319,8 +333,11 @@ def get_user_info(id: int) -> dict:
 
 def delete_user(id: int):
     logger.info(f"Delete user (id - {id})")
-    product = Users.get(Product.id == id)
-    product.delete_instance()
+    try:
+        product = Users.get(Product.id == id)
+        product.delete_instance()
+    except peewee.DoesNotExist:
+        logger.error(f"Can`t delete user (id - {id}) doesn`t exist.")
 
 
 def update_order(id_user: int, id_obj: int, quantity: int = None):
@@ -332,16 +349,16 @@ def update_order(id_user: int, id_obj: int, quantity: int = None):
     :last_update: - Последнее обновление записи
     :return:
     """
-
-    row: Order = Order.get(Order.id_user == id_user and Order.id_obj == id_obj)
-    if quantity:
-        logger.info(f"Update quantity {row.quantity} to {quantity} (id order - {row.id})")
-        row.quantity = quantity
-        row.last_update = datetime.now()
-
-    row = Order.create(id=row.id, id_user=id_user, id_obj=id_obj, quantity=quantity)
-    logger.info(f'Create new order \n'
-                f'id={row.id}, id_user={id_user}, id_obj={id_obj}, quantity={quantity}')
+    try:
+        row: Order = Order.get(Order.id_user == id_user and Order.id_obj == id_obj)
+        if quantity:
+            logger.info(f"Update quantity {row.quantity} to {quantity} (id order - {row.id})")
+            row.quantity = quantity
+            row.last_update = datetime.now()
+    except peewee.DoesNotExist:
+        row = Order.create(id=row.id, id_user=id_user, id_obj=id_obj, quantity=quantity)
+        logger.info(f'Create new order \n'
+                    f'id={row.id}, id_user={id_user}, id_obj={id_obj}, quantity={quantity}')
     row.save()
     logger.info(f'Finish update operation with order (id order - {row.id})')
 
@@ -366,16 +383,19 @@ def get_order_info(id_user: int, id_obj: int) -> dict:
                 'quantity': info.quantity
             }
             return answ
-    except Order.DoesNotExist:
+    except peewee.DoesNotExist:
         logger.error(f"Order (id_user - {id_user}; id_obj - {id_obj}) doesn`t exist.")
         print(f"Order (id_user - {id_user}; id_obj - {id_obj}) doesn`t exist.")
         return {}
 
 
 def delete_order(id_user: int, id_obj: int):
-    order: Order = Order.get(Order.id_user == id_user and Order.id_obj == id_obj)
-    logger.info(f"Delete order (id - {order.id})")
-    order.delete_instance()
+    try:
+        order: Order = Order.get(Order.id_user == id_user and Order.id_obj == id_obj)
+        logger.info(f"Delete order (id - {order.id})")
+        order.delete_instance()
+    except peewee.DoesNotExist:
+        logger.info(f"Error delete order (id - {order.id}) does not exist.")
 
 
 def update_delivery(id_order: int, deliveryWayCode: str = None, selectedAddressId: str = None,
@@ -405,7 +425,7 @@ def update_delivery(id_order: int, deliveryWayCode: str = None, selectedAddressI
             row.deliveryPrice = deliveryPrice
         if deliveryWayCode or selectedAddressId or deliveryPrice:
             row.last_update = datetime.now()
-    except DoesNotExist:
+    except peewee.DoesNotExist:
         row = Delivery.create(id_order=row.id_order, deliveryWayCode=deliveryWayCode,
                               selectedAddressId=selectedAddressId, deliveryPrice=deliveryPrice)
         logger.info(f'Create new order \n'
@@ -425,24 +445,27 @@ def get_delivery_info(id_order: int) -> dict:
     try:
         logger.debug(f"Get info about delivery (id order - {id_order})")
         info: Delivery = Delivery.get(Delivery.id_order == id_order)
-        if len(info):
-            answ = {
-                'id_order': info.id_order,
-                'deliveryWayCode': info.deliveryWayCode,
-                'selectedAddressId': info.selectedAddressId,
-                'deliveryPrice': info.deliveryPrice
-            }
-            return answ
-    except Delivery.DoesNotExist:
+
+        answ = {
+            'id_order': info.id_order,
+            'deliveryWayCode': info.deliveryWayCode,
+            'selectedAddressId': info.selectedAddressId,
+            'deliveryPrice': info.deliveryPrice
+        }
+        return answ
+    except peewee.DoesNotExist:
         logger.error(f"Delivery for order (id_order - {id_order}) doesn`t exist.")
         print(f"Delivery for order (id_order - {id_order}) doesn`t exist.")
         return {}
 
 
 def delete_order(id_order: int):
-    delivery: Delivery = Order.get(Delivery.id_order == id_order)
-    logger.info(f"Delete order (id - {delivery.id_order})")
-    delivery.delete_instance()
+    try:
+        delivery: Delivery = Order.get(Delivery.id_order == id_order)
+        logger.info(f"Delete order (id - {delivery.id_order})")
+        delivery.delete_instance()
+    except peewee.DoesNotExist:
+        logger.info(f"Error delete order (id - {delivery.id_order}) does not exist")
 
 
 """
@@ -465,14 +488,33 @@ def delete_order(id_order: int):
 
 Process finished with exit code 0
 """
-update_product(
-    id_obj=31231134,
-    optionId=68149834,
-    name='Чехол для телефона Samsung Galaxy A72 / Самсунг Гэлакси А72',
-    price=39,
-    quantity=2
+# update_product(
+#     id_obj=31231136,
+#     optionId=68149834,
+#     name='Чехол для телефона Samsung Galaxy A72 / Самсунг Гэлакси А72',
+#     price=39,
+#     quantity=2
+# )
+# data = get_product_info(31231136)
+update_card(
+    number='427638******8131',
+    hash='f598cbdd-a2a6-11ec-a146-964d458f538c',
+    active=True
 )
-data = get_product_info(31231135)
+
+update_card(
+    number='553691******7412',
+    hash='25db25af-9fb9-11ec-ad1b-02adff0c675e',
+    active=True
+)
+
+update_card(
+    number='777766******7777',
+    hash='25db25af-9fb9-11ec-ad1b-02adff0cyyyyy',
+    active=False
+)
+
+data = get_active_cards()
 print("---------")
 print(data)
 print("---------")

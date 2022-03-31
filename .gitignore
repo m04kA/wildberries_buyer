@@ -52,4 +52,5 @@ gg_2.py
 help.json
 test.py
 .venv
+venv
 wildberries.sqlite3
