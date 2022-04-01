@@ -1,3 +1,5 @@
+from pprint import pprint
+
 from DataBase.plagins import *
 
 """
@@ -29,29 +31,33 @@ update_product(
 )
 create_user(id=11)
 
-update_card(
-    user=11,
-    number='427638******8131',
-    hash='f598cbdd-a2a6-11ec-a146-964d458f538c',
-    select=True,
-    active=True
-)
+# update_card(
+#     user=12,
+#     number='427638******8131',
+#     hash='f598cbdd-a2a6-11ec-a146-964d458f538c',
+#     select=True,
+#     active=True
+# )
 
-update_card(
-    user=11,
-    number='553691******7412',
-    hash='25db25af-9fb9-11ec-ad1b-02adff0c675e',
-    select=False,
-    active=True
-)
+delete_card(12, "427638******8131")
 
-update_card(
-    user=11,
-    number='777766******7777',
-    hash='25db25af-9fb9-11ec-ad1b-02adff0cyyyyy',
-    select=False,
-    active=False
-)
+# gg = get_active_cards(11)
+# pprint(gg)
+# update_card(
+#     user=11,
+#     number='553691******7412',
+#     hash='25db25af-9fb9-11ec-ad1b-02adff0c675e',
+#     select=False,
+#     active=True
+# )
+
+# update_card(
+#     user=11,
+#     number='777766******7777',
+#     hash='25db25af-9fb9-11ec-ad1b-02adff0cyyyyy',
+#     select=False,
+#     active=False
+# )
 
 update_order(user=11, obj=31231136, quantity=2)
 

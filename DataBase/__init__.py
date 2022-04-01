@@ -55,3 +55,4 @@ def get_base_client():
 
 logger.info(f"Connect to data base {config_base['dbname']}")
 data_base = get_base_client()
+cursor = data_base.cursor()

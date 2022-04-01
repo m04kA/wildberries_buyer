@@ -4,6 +4,7 @@ import peewee
 from peewee import *
 from loguru import logger
 from DataBase.DB_client import *
+from DataBase import cursor
 
 
 def update_product(obj: int, option: int = None, name: str = None, price: int = None, quantity: int = None):
@@ -87,26 +88,30 @@ def update_card(user: int, number: str, hash: str = None, select: bool = None, a
     :last_update: - Последнее обновление записи
     :return:
     """
-
+    set = ""
     try:
-        row = Cards.select().where((Cards.user == user) & (Cards.number == number)).get()
+        cursor.execute("SELECT * FROM cards WHERE user_id = ? AND number = ?", (user, number))
+        row = list(cursor.fetchall()[0])
+        if len(row) == 0:
+            raise Cards.DoesNotExist
         if hash:
-            logger.info(f"Update hash {row.hash} to {hash} (number card - {number})")
-            row.hash = hash
+            logger.info(f"Update hash {row[3]} to {hash} (number card - {number})")
+            cursor.execute("UPDATE cards SET 'hash' = ? WHERE user_id = ? AND number = ?", (hash, user, number))
         if select:
-            logger.info(f"Update select {row.select} to {select} (number card - {number})")
-            row.select = select
+            logger.info(f"Update select {row[4]} to {select} (number card - {number})")
+            cursor.execute("UPDATE cards SET 'select' = ? WHERE user_id = ? AND number = ?", (select, user, number))
         if active != None:
-            logger.info(f"Update active {row.active} to {active} (number card - {number})")
-            row.active = active
+            logger.info(f"Update active {row[5]} to {active} (number card - {number})")
+            cursor.execute("UPDATE cards SET 'active' = ? WHERE user_id = ? AND number = ?", (active, user, number))
         if hash or active or select:
-            row.last_update = datetime.now()
-        logger.info(f'Create new card \n'
-                    f'number={number}, hash={hash}, active={active}')
+            cursor.execute("UPDATE cards SET 'last_update' = ? WHERE user_id = ? AND number = ?",
+                           (str(datetime.now()), user, number))
     except Cards.DoesNotExist:
         row = Cards.create(user=user, number=number, hash=hash, select=select, active=active)
-    row.save()
-    logger.info(f'Finish update operation with obj (number card - {number})')
+        row.save()
+        logger.info(f'Create new card \n'
+                    f'user={user}, number={number}, hash={hash}, select={select}, active={active}')
+    logger.info(f'Finish update operation with obj (number card - {number}, user - {user})')
 
 
 def get_card_info(user: int, number: str) -> dict:
@@ -119,15 +124,18 @@ def get_card_info(user: int, number: str) -> dict:
     logger.debug(f"Get info about bank card (number card - {number})")
     answer = {}
     try:
-        info: Cards = Cards.select().where((Cards.number == number) & (Cards.user == user))
+        cursor.execute("SELECT * FROM cards WHERE user_id = ? AND number = ?", (user, number,))
+        info = list(cursor.fetchall()[0])
+        if len(info) == 0:
+            raise Cards.DoesNotExist
         logger.debug(f'Get info about card (number - {number})')
         answer = {
-            'id': info.id,
-            'user': info.user,
-            'number': info.number,
-            'hash': info.hash,
-            'select': info.select,
-            'active': info.active
+            'id': info[0],
+            'user': info[1],
+            'number': info[2],
+            'hash': info[3],
+            'select': info[4],
+            'active': info[5]
         }
     except Cards.DoesNotExist:
         logger.error(f"Card (number - {number}) doesn`t exist.")
@@ -144,9 +152,13 @@ def get_active_cards(user: int) -> list:
     answer = []
     logger.debug(f"Get info about bank cards (active == True)")
     try:
-        cards = Cards.select().where(Cards.active == True & Cards.user == user)
+        cursor.execute('SELECT "number" FROM cards WHERE user_id = ? AND active = True', (user,))
+        cards = cursor.fetchall()
+        if len(cards) == 0:
+            raise Cards.DoesNotExist
+        cards = list(map(lambda x: str(x[0]), cards))
         for card in cards:
-            answer.append(get_card_info(card.user, card.number))
+            answer.append(get_card_info(user, str(card)))
     except Cards.DoesNotExist:
         logger.error("Bank cards (active == True) doesn`t exist.")
         print("Bank cards (active == True) doesn`t exist.")
@@ -155,11 +167,7 @@ def get_active_cards(user: int) -> list:
 
 def delete_card(user: int, number: str):
     logger.info(f"Delete bank card (number - {number})")
-    try:
-        product = Cards.select().where(Cards.number == number & Cards.user == user).get()
-        product.delete_instance()
-    except Cards.DoesNotExist:
-        logger.error(f"Error delete card (number - {number}) -> does not exist.")
+    cursor.execute('DELETE FROM cards WHERE user_id = ? AND number = ?', (user, number))
 
 
 def create_user(id: int):
@@ -215,7 +223,9 @@ def update_order(user: int, obj: int, quantity: int = None):
     :return:
     """
     try:
-        row: Order = Order.select().where((Order.user == user) & (Order.obj == obj)).get()
+        row: Order = Order.select().where((Order.user == user) & (Order.obj == obj))
+        print(row)
+        row = row.get()
         if quantity:
             logger.info(f"Update quantity {row.quantity} to {quantity} (id order - {row.id})")
             row.quantity = quantity
