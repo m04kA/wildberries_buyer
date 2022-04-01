@@ -91,26 +91,36 @@ def update_card(user: int, number: str, hash: str = None, select: bool = None, a
     set = ""
     try:
         cursor.execute("SELECT * FROM cards WHERE user_id = ? AND number = ?", (user, number))
-        row = list(cursor.fetchall()[0])
+        row = cursor.fetchall()
+        print(row)
         if len(row) == 0:
             raise Cards.DoesNotExist
+        else:
+            row = list(row[0])
         if hash:
             logger.info(f"Update hash {row[3]} to {hash} (number card - {number})")
-            cursor.execute("UPDATE cards SET 'hash' = ? WHERE user_id = ? AND number = ?", (hash, user, number))
+            cursor.execute("UPDATE cards SET hash = ? WHERE user_id = ? AND number = ?", (hash, user, number))
         if select:
             logger.info(f"Update select {row[4]} to {select} (number card - {number})")
-            cursor.execute("UPDATE cards SET 'select' = ? WHERE user_id = ? AND number = ?", (select, user, number))
+            cursor.execute("UPDATE cards SET select = ? WHERE user_id = ? AND number = ?", (select, user, number))
         if active != None:
             logger.info(f"Update active {row[5]} to {active} (number card - {number})")
-            cursor.execute("UPDATE cards SET 'active' = ? WHERE user_id = ? AND number = ?", (active, user, number))
+            cursor.execute("UPDATE cards SET active = ? WHERE user_id = ? AND number = ?", (active, user, number))
         if hash or active or select:
-            cursor.execute("UPDATE cards SET 'last_update' = ? WHERE user_id = ? AND number = ?",
+            cursor.execute("UPDATE cards SET last_update = ? WHERE user_id = ? AND number = ?",
                            (str(datetime.now()), user, number))
     except Cards.DoesNotExist:
-        row = Cards.create(user=user, number=number, hash=hash, select=select, active=active)
-        row.save()
-        logger.info(f'Create new card \n'
-                    f'user={user}, number={number}, hash={hash}, select={select}, active={active}')
+        try:
+            row = Cards.create(user=user, number=number, hash=hash, select=select, active=active)
+            row.save()
+            logger.info(f'Create new card \n'
+                        f'user={user}, number={number}, hash={hash}, select={select}, active={active}')
+        except Exception as ex:
+            print(ex)
+            logger.error(ex)
+    except Exception as ex:
+        print(ex)
+        logger.error(ex)
     logger.info(f'Finish update operation with obj (number card - {number}, user - {user})')
 
 
@@ -223,9 +233,7 @@ def update_order(user: int, obj: int, quantity: int = None):
     :return:
     """
     try:
-        row: Order = Order.select().where((Order.user == user) & (Order.obj == obj))
-        print(row)
-        row = row.get()
+        row: Order = Order.select().where((Order.user == user) & (Order.obj == obj)).get()
         if quantity:
             logger.info(f"Update quantity {row.quantity} to {quantity} (id order - {row.id})")
             row.quantity = quantity

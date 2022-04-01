@@ -15,27 +15,41 @@ def send_message_info_item(data: dict = None, id_user: int = 764461859):
     :param id_user:
     :return:
     """
-    start = time.time()
-    while True:
-        loop = asyncio.get_event_loop()
-        try:
-            if data:
-                info = data
-                loop.run_until_complete(
-                    bot.send_message(id_user, f"```{json.dumps(info)}```",
-                                     reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
-                                         InlineKeyboardButton('Купить!',
-                                                              callback_data=f"buy.{data['optionId']}.{data['quantity']}")
-                                     ]]), parse_mode="MarkdownV2"))
-            else:
-                info = {
-                    'message': 'Data is none.'}
-                loop.run_until_complete(bot.send_message(id_user, f"```{json.dumps(info)}```", parse_mode="MarkdownV2"))
-            time.sleep(15)
-        except KeyboardInterrupt:
-            loop.run_until_complete(bot.send_message(764461859, "Всего доброго"))
-        if time.time() - start > 31:
-            break
+    loop = asyncio.get_event_loop()
+    try:
+        if data:
+            info = data
+            loop.run_until_complete(
+                bot.send_message(id_user, f"```{json.dumps(info)}```",
+                                 reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
+                                     InlineKeyboardButton('Купить!',
+                                                          callback_data=f"buy.{data['id_obj']}.{data['quantity']}")
+                                 ]]), parse_mode="MarkdownV2"))
+        else:
+            info = {'message': 'Data is none.'}
+            loop.run_until_complete(bot.send_message(id_user, f"```{json.dumps(info)}```", parse_mode="MarkdownV2"))
+        loop.close()
+    except KeyboardInterrupt:
+        loop.run_until_complete(bot.send_message(id_user, "Всего доброго"))
 
 
-# send_message_info_item()
+def give_choice_card(open_cards: dict, id_user: int = 764461859):
+    """
+    Функция отправки сообщения с выбором карт.
+    :param id_user: - id пользователя в ТГ
+    :param open_cards: - Словарь с доступными картами.
+    :return:
+    """
+    loop = asyncio.get_event_loop()
+    try:
+        key_board = InlineKeyboardMarkup(parse_mode="MarkdownV2")
+        for number in open_cards.keys():
+            button = InlineKeyboardButton(f"{number}", callback_data=f"{number}")
+            key_board.add(button)
+
+        loop.run_until_complete(
+            bot.send_message(id_user, f"```{json.dumps(open_cards)}```",
+                             reply_markup=key_board))
+        loop.close()
+    except KeyboardInterrupt:
+        loop.run_until_complete(bot.send_message(id_user, "Всего доброго"))

@@ -17,7 +17,7 @@ def get_cookie_user() -> str:
         logger.error("Wrong connect!")
         raise ConnectionError("Check internet connection.")
 
-    driver.get("https://www.wildberries.ru/security/login?returnUrl=https%3A%2F%2Fwww.wildberries.ru%2F")
+    driver.get("https://www.wildberries.ru")
     while True:
         try:
             logger.info("Wait sign in")
@@ -36,4 +36,5 @@ def get_cookie_user() -> str:
     driver.close()
     logger.debug("Close chrome")
     return my_cookies
+
 

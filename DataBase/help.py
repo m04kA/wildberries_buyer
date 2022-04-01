@@ -22,14 +22,19 @@ from DataBase.plagins import *
 
 Process finished with exit code 0
 """
-update_product(
-    obj=31231136,
-    option=68149834,
-    name='Чехол для телефона Samsung Galaxy A72 / Самсунг Гэлакси А72',
-    price=39,
-    quantity=2
-)
-create_user(id=11)
+
+
+
+
+
+# update_product(
+#     obj=31231136,
+#     option=68149834,
+#     name='Чехол для телефона Samsung Galaxy A72 / Самсунг Гэлакси А72',
+#     price=39,
+#     quantity=2
+# )
+# create_user(id=11)
 
 # update_card(
 #     user=12,
@@ -39,7 +44,7 @@ create_user(id=11)
 #     active=True
 # )
 
-delete_card(12, "427638******8131")
+# delete_card(12, "427638******8131")
 
 # gg = get_active_cards(11)
 # pprint(gg)
@@ -59,14 +64,14 @@ delete_card(12, "427638******8131")
 #     active=False
 # )
 
-update_order(user=11, obj=31231136, quantity=2)
-
-ord = get_order_info(11, 31231136)
-
-if ord:
-    update_delivery(order_id=ord["id"], delivery_way_code="self", selected_address_id="161616")
-
-# data = get_order_info(11, 31231136)
-print("---------")
-print(ord)
-print("---------")
+# update_order(user=11, obj=31231136, quantity=2)
+#
+# ord = get_order_info(11, 31231136)
+#
+# if ord:
+#     update_delivery(order_id=ord["id"], delivery_way_code="self", selected_address_id="161616")
+#
+# # data = get_order_info(11, 31231136)
+# print("---------")
+# print(ord)
+# print("---------")

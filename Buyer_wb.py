@@ -1,10 +1,15 @@
+import re
 import urllib
 import json as JSON
 from pprint import pprint
+import time
+
+import requests
 from requests import Session
 from exceptions import ServerError
 from SingIn import get_cookie_user
 from loguru import logger
+import urllib.request
 
 
 class Buyer_waildberries:
@@ -15,9 +20,10 @@ class Buyer_waildberries:
     default_headers = {
         'Connection': 'keep-alive',
         "content-type": "application/json",
+        "x-spa-version": "",
         "x-requested-with": "XMLHttpRequest",
-        "sec-ch-ua": '" Not A;Brand";v="99", "Chromium";v="99", "Google Chrome";v="99"',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.102 Safari/537.36',
+        "sec-ch-ua": '" Not A;Brand";v="99", "Chromium";v="100", "Google Chrome";v="100"',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.60 Safari/537.36',
         'sec-ch-ua-platform': '"Windows"',
         'Accept': '*/*',
         'Origin': 'https://www.wildberries.ru',
@@ -41,6 +47,8 @@ class Buyer_waildberries:
             "http": "http://localhost:8888"
         }
 
+        self.default_headers["x-spa-version"] = self.get_x_spa_version()
+
         self.session = Session()
         self.data = {}
         logger.debug(f"Start session - {self.session}")
@@ -51,6 +59,17 @@ class Buyer_waildberries:
         logger.debug(f"Set headers - {self.headers}")
         # self.session.proxies.update(self.proxies)
         # logger.debug(f"Set proxies - {self.proxies}")
+
+    def get_x_spa_version(self):
+        version = ""
+        while not version:
+            f = requests.get("https://www.wildberries.ru/").text
+            result = f[f.find("appVersion"):].split('\n')[0]
+            patern = r"\d(\.\d)+"
+            version = re.search(patern, result).group(0)
+            if not version:
+                time.sleep(0.2)
+        return version
 
     @logger.catch()
     def handle_errors(self, response: dict) -> bool:
@@ -79,10 +98,9 @@ class Buyer_waildberries:
         logger.debug(f"Get info about - {id_obj}")
         return self.handle_request(method="GET",
                                    url="https://wbxcatalog-ru.wildberries.ru/nm-2-card/catalog",
-                                   json=None,
-                                   spp=19,
-                                   regions="64,86,83,75,4,38,30,33,70,71,22,31,66,68,1,82,48,40,69,80",
-                                   stores="117673,122258,122259,125238,125239,125240,6159,507,3158,117501,120602,120762,6158,121709,124731,159402,2737,130744,117986,1733,686,132043",
+                                   spp=22,
+                                   regions="69,64,86,83,75,4,38,30,33,70,71,22,31,66,68,82,48,1,40,80",
+                                   stores="117673,122258,122259,125238,125239,125240,507,3158,117501,120602,120762,6158,121709,124731,130744,159402,2737,117986,1733,686,132043",
                                    pricemarginCoeff=1.0,
                                    reg=1,
                                    appType=1,
@@ -93,7 +111,7 @@ class Buyer_waildberries:
                                    lang="ru",
                                    curr="rub",
                                    couponsGeo="12,3,18,15,21",
-                                   dest="-1029256,-102269,-1252558,-445282",
+                                   dest="-1029256,-102269,-2162196,-1275551",
                                    nm=id_obj)
 
     def handle_request(self,
