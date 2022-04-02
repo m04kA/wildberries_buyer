@@ -139,14 +139,13 @@ def get_card_info(user: int, number: str) -> dict:
         if len(info) == 0:
             raise Cards.DoesNotExist
         logger.debug(f'Get info about card (number - {number})')
-        answer = {
+        answer = {info[2]: {
             'id': info[0],
             'user': info[1],
-            'number': info[2],
             'hash': info[3],
             'select': info[4],
             'active': info[5]
-        }
+        }}
     except Cards.DoesNotExist:
         logger.error(f"Card (number - {number}) doesn`t exist.")
         print(f"Card (number - {number}) doesn`t exist.")

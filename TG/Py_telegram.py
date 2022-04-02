@@ -1,8 +1,6 @@
 import asyncio
-import time
 import aiogram
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 from Buyer_wb import *
 from DataBase.plagins import *
 from aiogram.utils.helper import Helper, HelperMode, ListItem
@@ -21,8 +19,12 @@ bot = aiogram.Bot(token='5270879131:AAF95EAuk0hH7r4Ga7P2UNWBoUBK7O8DDVI')
 dp = aiogram.Dispatcher(bot, run_tasks_by_default=True, storage=MemoryStorage())
 
 waildberries_b = Buyer_waildberries(
-    cookies="6B13CCBAAAAF2B6D3D6F7F2399E9028CAFC4D36CBB0672748A17A08F1B46542092C42D7BD6945D89075FDD93C55765DED51AA5C4DA3A06A4CE03CF662114C92C0D270C7D0ED7B7BA6AD388529C1DE3F18C9C6E1B6E1DCAED90656F7F2D25269DE698642A7BA7816039C15A73DAE681BEE8F4628F413F7659A2BD7D3BB5ED2F95A18FFD9AE56E3286037153D030E9D935F68E077AA31E30F9CC0D63C2E696D35749C7793C7A002B42D63BDACBF4EA6AFE19587F5E21721CD1A86F9C3AF311B9BE253C3509F531585B72ADF06F9806429ADDC4402F490E131B668800E5A65FED7D3D07B98AACE87941E959C93F4ED1C8FF3DCDCA9FD37F176AAA8F8FBE8F3EDDA6EE9EB0B29F33D4943BA7AFED44DA04F26B6D19383F4A6AA834A097B6E38B8966551E76B4"
+    cookies="0E8FFE6C3B71611AF60A38FF71D2E4ED4ECAF447A0B45319F760AAF0AC511D32E482213B904961E1606841E81C73B8FF3BA22962F22A55EF5BBE56EA92306720F0EE5808E573B681E3C5FD6A20E6DBF6C25B4F1585DAF63A5D015CEAE79DA5881FB40823882033D92F354713F482707361E4C0FB27965036079B9586916F864B522F28FC0E528A80289C3D907AD95F19B3E87FD61977AA175917F3BAE3961922FF768CCD8F2F4966A5AF4DC8F5EEB3D005EC2DF40D06C8413241F8B563DD39B487C3AD0F3C577440FBB4445765EE13DDF7CCA525268506CC7AC4637D8B4CEDDB79BE1E7287BCCE7EB4D0F93BEDAE586FEEC2EB9314967CDDAB80BDB2B4D3D59AD02BF1918B4360D335005F62194D374533A40486553BAE8EABF1DFB4D77566F6638886EB"
 )
+
+if waildberries_b:
+    print("Start py_yg")
+    logger.info("Py_tg working.")
 
 
 @dp.message_handler(content_types=['text', 'document', 'audio'])
@@ -42,8 +44,8 @@ async def get_text_messages(message: aiogram.types.Message):
 async def process_callback_button1(callback_query: aiogram.types.CallbackQuery):
     state = dp.current_state(user=callback_query.from_user.id)  # ?
     callback_data = callback_query.data.split('.')
+    await bot.answer_callback_query(callback_query.id)
     if callback_data[0] == 'buy':
-        # await bot.answer_callback_query(callback_query.id)  # ?
         await bot.send_message(callback_query.from_user.id,
                                f'В каком количестве вы хотите купить товар (id - {callback_data[1]})\n'
                                f'Максимум можно купить {callback_data[2]}')
@@ -75,15 +77,36 @@ async def buy(message: aiogram.types.Message):
         for name, value in cards_right.items():
             update_card(user=int(message.from_user.id), number=name, hash=value["id"], select=value["select"],
                         active=True)
-        await state.reset_state(TestStates.CHOICE_CARD_1[0])
-        give_choice_card(open_cards=cards_right)
+        await state.set_state(TestStates.CHOICE_CARD_1[0])
+        await give_choice_card(open_cards=cards_right)
 
 
-@dp.message_handler(state=TestStates.CHOICE_CARD_1[0])
+@dp.callback_query_handler(state=TestStates.CHOICE_CARD_1[0])
 async def process_callback_button1(callback_query: aiogram.types.CallbackQuery):
+    await bot.answer_callback_query(callback_query.id)
+    logger.info("Prepare after buying")
     user_id = callback_query.from_user.id
     state = dp.current_state(user=user_id)
-    get_card_info(int(user_id), callback_query.data)
+    data = callback_query.data.split('.')
+    if data[1] == '1':
+        card = get_card_info(int(user_id), data[0])
+        waildberries_b.payment_by_card(card)
+    else:
+        card = get_card_info(int(user_id), data[0])
+        flag = waildberries_b.choosing_a_bank_card(card)
+        if flag:
+            if waildberries_b.payment_by_card(card):
+                await bot.send_message(callback_query.from_user.id, "All good")
+            else:
+                await bot.send_message(callback_query.from_user.id, "Some problem")
+            all_cards = get_active_cards(int(user_id))
+            for card in all_cards:
+                number = list(card.keys())[0]
+                if number == data[0]:
+                    update_card(int(user_id), number, select=True)
+                else:
+                    update_card(int(user_id), number, select=False)
+    await state.reset_state()
 
 
 executor = aiogram.executor.Executor(

@@ -57,18 +57,19 @@ class Buyer_waildberries:
         logger.debug(f"Set cookies - {self.cookies}")
         self.session.headers.update(self.headers)
         logger.debug(f"Set headers - {self.headers}")
-        # self.session.proxies.update(self.proxies)
-        # logger.debug(f"Set proxies - {self.proxies}")
+        self.session.proxies.update(self.proxies)
+        logger.debug(f"Set proxies - {self.proxies}")
 
     def get_x_spa_version(self):
         version = ""
         while not version:
             f = requests.get("https://www.wildberries.ru/").text
-            result = f[f.find("appVersion"):].split('\n')[0]
-            patern = r"\d(\.\d)+"
-            version = re.search(patern, result).group(0)
+            patern = r"\d(\.\d){3,4}"
+            version = re.search(patern, f)
             if not version:
                 time.sleep(0.2)
+            else:
+                version = version.group(0)
         return version
 
     @logger.catch()
@@ -196,6 +197,7 @@ class Buyer_waildberries:
         # Проверка на соответствие в корзине.
         if response["value"]["basketInfo"]["basketQuantity"] == quantity:
             logger.info(f"Successful add to basket object (id - {self.data['id_obj']}; quantity - {quantity})")
+            self.data["quantity"] = quantity
             return True
         return False
 
@@ -328,7 +330,7 @@ class Buyer_waildberries:
                 }
         return answ
 
-    def choosing_a_bank_card(self, name_bank_card: str, open_cards: dict) -> bool:
+    def choosing_a_bank_card(self, open_cards: dict) -> bool:
         """
         Выбор карты для оплаты товара.
 
@@ -338,7 +340,7 @@ class Buyer_waildberries:
         :param data: - информация о товаре (получаем из info_about_cards, формируется в stock_availability)
         :return:
         """
-
+        name_bank_card = list(open_cards.keys())[0]
         logger.info(f"Refresh choosing bank card to {name_bank_card}.")
         # POST https://www.wildberries.ru/spa/yandexaddress/editajax?version=2 # - Ссылка для определения addressId
         # POST https://www.wildberries.ru/spa/deliverypoints - Ссылка на проверку адресов доставки
@@ -371,8 +373,8 @@ class Buyer_waildberries:
             name_bank_card,
             response["value"]["basket"]["paymentType"]["selectedBankCard"]["name"]
         )
-        if flag:
-            open_cards = self.update_select_card(open_cards, name_bank_card)
+        # if flag:
+        #     open_cards = self.update_select_card(open_cards, name_bank_card)
         return flag
 
         # if name_bank_card == response["value"]["basket"]["paymentType"]["selectedBankCard"]["name"]:
@@ -426,14 +428,14 @@ class Buyer_waildberries:
         :param data: - Данные о товаре
         :return:
         """
-
-        select_card_id = ""
-        for card in cards.keys():
-            if cards[card]['select']:
-                select_card_id = cards[card]['id']
-                logger.info(f"Order payment start:\n"
-                            f"id object - {self.data['id_obj']}\n"
-                            f"select card - {card}")
+        card = list(cards.keys())[0]
+        select_card_id = cards[card]['hash']
+        # for card in cards.keys():
+        #     # if cards[card]['select']:
+        #     select_card_id = cards[card]['id']
+        logger.info(f"Order payment start:\n"
+                    f"id object - {self.data['id_obj']}\n"
+                    f"select card - {card}")
         info = {
             "Delivery": self.data["AddressInfo"]["DeliveryWayCode"],
             "orderDetails.MaskedCardId": select_card_id,
@@ -443,7 +445,7 @@ class Buyer_waildberries:
             "orderDetails.DeliveryPrice": "",  # courier -> int | self -> “”
             "orderDetails.PaymentType.Id": 63,
             "orderDetails.AgreePublicOffert": True,
-            "orderDetails.TotalPrice": self.data["prise"],
+            "orderDetails.TotalPrice": self.data["prise"] * self.data["quantity"],
             "orderDetails.UserBasketItems.Index": 0,
             "orderDetails.UserBasketItems[0].CharacteristicId": self.data["optionId"],
             "orderDetails.IncludeInOrder[0]": self.data["optionId"],
@@ -474,16 +476,18 @@ class Buyer_waildberries:
                         f"id object - {self.data['id_obj']}\n"
                         f"select card - {card}")
             print("Всё окей")
+            print(f"Заказ: {params}")
+            logger.info(f"Successful order:\n"
+                        f"id object - {self.data['id_obj']}\n"
+                        f"select card - {card}")
+            return True
 
         else:
             logger.error(f"Problems with payment status\n"
                          f"id object - {self.data['id_obj']}\n"
                          f"select card - {card}")
             print("Что-то случилось со статусом оплаты заказа...")
-        print(f"Заказ: {params}")
-        logger.info(f"Successful order:\n"
-                    f"id object - {self.data['id_obj']}\n"
-                    f"select card - {card}")
+            return False
 
     def order_verification(self, params: str) -> bool:
         """
@@ -497,7 +501,8 @@ class Buyer_waildberries:
             method="POST",
             url=url
         )
-        if response["value"]["data"]["order"]["orderPaymentStatus"] == "success":
+        result = response["value"]["data"]["order"]["orderPaymentStatus"]
+        if result == "success" or result == "unknown":
             print("Оплата произошла успешно.")
             return True
         print("Какие-то проблемы с оплатой заказа.")

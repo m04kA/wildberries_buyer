@@ -3,6 +3,7 @@ import json
 import time
 import aiogram
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+from loguru import logger
 
 bot = aiogram.Bot(token='5270879131:AAF95EAuk0hH7r4Ga7P2UNWBoUBK7O8DDVI')
 dp = aiogram.Dispatcher(bot, run_tasks_by_default=True)
@@ -20,36 +21,38 @@ def send_message_info_item(data: dict = None, id_user: int = 764461859):
         if data:
             info = data
             loop.run_until_complete(
-                bot.send_message(id_user, f"```{json.dumps(info)}```",
-                                 reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
-                                     InlineKeyboardButton('Купить!',
-                                                          callback_data=f"buy.{data['id_obj']}.{data['quantity']}")
-                                 ]]), parse_mode="MarkdownV2"))
+                bot.send_message(id_user, f"```{json.dumps(info,ensure_ascii=False)}```", reply_markup=InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton('Купить!', callback_data=f"buy.{data['id_obj']}.{data['quantity']}")]]), parse_mode="MarkdownV2"))
+            # await bot.send_message(id_user, f"```{json.dumps(info)}```",
+            #                        reply_markup=InlineKeyboardMarkup(inline_keyboard=[[
+            #                            InlineKeyboardButton(
+            #                                'Купить!',
+            #                                 callback_data=f"buy.{data['id_obj']}.{data['quantity']}")
+            #                        ]]), parse_mode="MarkdownV2")
         else:
             info = {'message': 'Data is none.'}
-            loop.run_until_complete(bot.send_message(id_user, f"```{json.dumps(info)}```", parse_mode="MarkdownV2"))
-        loop.close()
+            loop.run_until_complete(bot.send_message(id_user, f"```{json.dumps(info,ensure_ascii=False)}```", parse_mode="MarkdownV2"))
     except KeyboardInterrupt:
         loop.run_until_complete(bot.send_message(id_user, "Всего доброго"))
+        # await bot.send_message(id_user, "Всего доброго")
 
 
-def give_choice_card(open_cards: dict, id_user: int = 764461859):
+async def give_choice_card(open_cards: dict, id_user: int = 764461859):
     """
     Функция отправки сообщения с выбором карт.
     :param id_user: - id пользователя в ТГ
     :param open_cards: - Словарь с доступными картами.
     :return:
     """
-    loop = asyncio.get_event_loop()
+    logger.info("Sent message about cards...")
     try:
-        key_board = InlineKeyboardMarkup(parse_mode="MarkdownV2")
+        key_board = InlineKeyboardMarkup()
         for number in open_cards.keys():
-            button = InlineKeyboardButton(f"{number}", callback_data=f"{number}")
+            if open_cards[number]["select"]:
+                button = InlineKeyboardButton(f"{number}", callback_data=f"{number}.1")
+            else:
+                button = InlineKeyboardButton(f"{number}", callback_data=f"{number}.0")
             key_board.add(button)
-
-        loop.run_until_complete(
-            bot.send_message(id_user, f"```{json.dumps(open_cards)}```",
-                             reply_markup=key_board))
-        loop.close()
+        await bot.send_message(id_user, f"```{json.dumps(open_cards,ensure_ascii=False)}```", reply_markup=key_board)
+        logger.info("Message about cards is success.")
     except KeyboardInterrupt:
-        loop.run_until_complete(bot.send_message(id_user, "Всего доброго"))
+        await bot.send_message(id_user, "Всего доброго")
