@@ -17,7 +17,7 @@ def get_cookie_user() -> str:
         logger.error("Wrong connect!")
         raise ConnectionError("Check internet connection.")
 
-    driver.get("https://www.wildberries.ru/security/login?returnUrl=https%3A%2F%2Fwww.wildberries.ru%2F")
+    driver.get("https://www.wildberries.ru")
     while True:
         try:
             logger.info("Wait sign in")
@@ -30,13 +30,11 @@ def get_cookie_user() -> str:
     my_cookies = driver.get_cookie('WILDAUTHNEW_V3')["value"]
     # driver.get("https://www.wildberries.ru/data?")
     # headers = driver.execute_script("var req = new XMLHttpRequest();req.open('GET', document.location, false);req.send(null);return req.getAllResponseHeaders()")
-
-    # type(headers) == str
-
     # headers = headers.splitlines()
-    # print(headers)
+    print(my_cookies)
 
     driver.close()
     logger.debug("Close chrome")
     return my_cookies
+
 
